@@ -1,1 +1,0 @@
-.. mdinclude:: ../../../charts/README.md

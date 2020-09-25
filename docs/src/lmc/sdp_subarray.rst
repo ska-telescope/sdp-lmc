@@ -36,23 +36,23 @@ Interface
 Attributes
 ^^^^^^^^^^
 
-======================= ====== ========== =========================== ===========
-Attribute               Type   Read/Write Values                      Description
-======================= ====== ========== =========================== ===========
-version                 String Read       Semantic version            Subarray device server version
------------------------ ------ ---------- --------------------------- -----------
-obsState                Enum   Read       :ref:`subarray_obsstate`    Subarray observing state
------------------------ ------ ---------- --------------------------- -----------
-adminMode               Enum   Read-write :ref:`subarray_adminmode`   Subarray admin mode
------------------------ ------ ---------- --------------------------- -----------
-healthState             Enum   Read       :ref:`subarray_healthstate` Subarray health state
------------------------ ------ ---------- --------------------------- -----------
-receiveAddresses        String Read       JSON object                 Host addresses for receiving visibilities
------------------------ ------ ---------- --------------------------- -----------
-schedulingBlockInstance String Read       JSON object                 State of Scheduling Block Instance
------------------------ ------ ---------- --------------------------- -----------
-processingBlockState    String Read       JSON object                 State of associated real-time Processing Blocks
-======================= ====== ========== =========================== ===========
+================ ======= ========== =========================== ===========
+Attribute        Type    Read/Write Values                      Description
+================ ======= ========== =========================== ===========
+version          String  Read       Semantic version            Subarray device server version
+---------------- ------- ---------- --------------------------- -----------
+obsState         Enum    Read       :ref:`subarray_obsstate`    Subarray observing state
+---------------- ------- ---------- --------------------------- -----------
+adminMode        Enum    Read-write :ref:`subarray_adminmode`   Subarray admin mode
+---------------- ------- ---------- --------------------------- -----------
+healthState      Enum    Read       :ref:`subarray_healthstate` Subarray health state
+---------------- ------- ---------- --------------------------- -----------
+receiveAddresses String  Read       JSON object                 Host addresses for receiving visibilities
+---------------- ------- ---------- --------------------------- -----------
+scanType         String  Read                                   Scan type, or 'null' if scan type is not configured
+---------------- ------- ---------- --------------------------- -----------
+scanID           Integer Read                                   Scan ID, or 0 if not scanning
+================ ======= ========== =========================== ===========
 
 .. _subarray_obsstate:
 
@@ -252,9 +252,12 @@ An example of the argument:
     }
 
 
-Python API
-----------
+..
+    this is commented out
 
-.. automodule:: ska_sdp_lmc.subarray
-    :members:
-    :undoc-members:
+    Python API
+    ----------
+
+    .. automodule:: ska_sdp_lmc.subarray
+        :members:
+        :undoc-members:

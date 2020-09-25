@@ -23,6 +23,7 @@
 autodoc_mock_imports = [
     'PyTango',
     'tango',
+    'ska',
     'skabase',
     'etcd3',
     'jsonschema',
@@ -37,13 +38,7 @@ import sphinx_rtd_theme
 # -- Path set up --------------------------------------------------------------
 
 sys.path.insert(0, os.path.abspath(
-    os.path.join('..', '..', 'src', 'lmc')
-))
-sys.path.insert(0, os.path.abspath(
-    os.path.join('..', '..', 'src', 'config_db')
-))
-sys.path.insert(0, os.path.abspath(
-    os.path.join('..', '..', 'src', 'logging')
+    os.path.join('..', '..', 'src')
 ))
 
 
@@ -54,7 +49,7 @@ def setup(app):
 
 # -- Project information -----------------------------------------------------
 project = 'developer.skatelescope.org'
-copyright = '2019, ORCA Team, Sim Team'
+copyright = '2019-2020, ORCA Team, Sim Team'
 author = 'Sim Team'
 
 

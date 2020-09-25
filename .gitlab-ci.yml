@@ -1,76 +1,114 @@
-# Local GitLab CI file for Local Monitoring and Control (Tango devices)
+variables:
+  GIT_STRATEGY: clone
 
-.env: &env
-  variables:
-    BUILD_PATH: src/lmc
+workflow:
+  rules:
+    - if: $CI_MERGE_REQUEST_ID
+    - if: $CI_COMMIT_BRANCH
 
-# ============================================================================
-# Build Python package
-# ============================================================================
+stages:
+  - test
+  - lint
+  - build
+  - publish
 
-build-python:ska-sdp-lmc-dev:
-  extends: .build_python_dev
-  <<: *env
-
-build-python:ska-sdp-lmc:
-  extends: .build_python_release
-  <<: *env
+image: python:latest
 
 # ============================================================================
-# Test Python package
+# Test and lint Python package
 # ============================================================================
 
-test:ska-sdp-lmc:
-  extends: .test_python
-  variables:
-    BUILD_PATH: src/lmc
-    SDP_CONFIG_HOST: etcd
-    TOGGLE_CONFIG_DB: 0
-    TOGGLE_RECEIVE_ADDRESSES_HACK: 0
+test:
+  stage: test
+  image: nexus.engageska-portugal.pt/ska-docker/ska-python-buildenv:latest
+  before_script:
+    - pip3 install -r requirements.txt -r requirements-test.txt
+  script:
+    - python3 setup.py test
   after_script:
-    # Move the coverage and unit test reports to the top level
-    - mv $BUILD_PATH/.coverage $CI_JOB_NAME.coverage
-    - mv $BUILD_PATH/unit-tests.xml unit-tests-${CI_JOB_NAME}.xml
-    - mv $BUILD_PATH/cucumber.json cucumber.json
+    - mkdir -p build/reports
+    - mv code-coverage.xml unit-tests.xml build/reports
   artifacts:
     paths:
-      - $CI_JOB_NAME.coverage
-      - unit-tests-${CI_JOB_NAME}.xml
-      - cucumber.json
+      - build
     expire_in: 1 week
     when: always
 
-# ============================================================================
-# Publish Python package (master only)
-# ============================================================================
-
-publish-python:ska-sdp-lmc:
-  extends: .publish_python
+lint:
+  stage: lint
+  image: nexus.engageska-portugal.pt/ska-docker/ska-python-buildenv:latest
   dependencies:
-    - build-python:ska-sdp-lmc
-  <<: *env
+    - test
+  before_script:
+    - pip3 install -r requirements.txt -r requirements-test.txt
+  script:
+    - pylint --exit-zero --output-format=parseable src/ska_sdp_lmc
+    - pylint --exit-zero --output-format=pylint2junit.JunitReporter src/ska_sdp_lmc > linting.xml
+  after_script:
+    - mkdir -p build/reports
+    - mv linting.xml build/reports
+  artifacts:
+    paths:
+      - build
+    expire_in: 1 week
+    when: always
 
 # ============================================================================
 # Build Docker development image
 # ============================================================================
 
-build:ska-sdp-lmc:
-  extends: .build_docker
-  <<: *env
+build:
+  stage: build
+  variables:
+    GIT_VERSION: ${CI_COMMIT_SHORT_SHA}
+    PREFIX_BUILD: ${CI_REGISTRY_IMAGE}
+  image: docker:stable
+  services:
+    - docker:dind
+  before_script:
+    - apk add make git
+    - docker login -u $CI_REGISTRY_USER -p $CI_REGISTRY_PASSWORD $CI_REGISTRY
+  script:
+    - make build
+    - make push
 
 # ============================================================================
 # Tag and publish Docker image (master only)
 # ============================================================================
 
-publish:ska-sdp-lmc:
-  extends: .publish_docker
+publish:
+  stage: publish
   dependencies:
-    - build:ska-sdp-lmc
-  <<: *env
+    - build
+  only: [master]
+  variables:
+    GIT_VERSION: ${CI_COMMIT_SHORT_SHA}
+    PREFIX_BUILD: ${CI_REGISTRY_IMAGE}
+    PREFIX_RELEASE: ${CI_REGISTRY_IMAGE}
+  image: docker:stable
+  services:
+    - docker:dind
+  before_script:
+    - apk add make git
+    - docker login -u $CI_REGISTRY_USER -p $CI_REGISTRY_PASSWORD $CI_REGISTRY
+    - docker login -u $DOCKER_REGISTRY_USERNAME -p $DOCKER_REGISTRY_PASSWORD $DOCKER_REGISTRY_HOST
+  script:
+    - make pull
+    - make push_release
+  retry: 2
 
 # ============================================================================
-# Upload XRay test report to JIRA (master only)
+# CI metrics
 # ============================================================================
 
-xray_report:
-  extends: .xray_report
+create_ci_metrics:
+  stage: .post
+  when: always
+  script:
+    # Gitlab CI badges creation: START
+    - curl -s https://gitlab.com/ska-telescope/ci-metrics-utilities/raw/master/scripts/ci-badges-func.sh | sh
+    # Gitlab CI badges creation: END
+  artifacts:
+    paths:
+      - build
+    expire_in: 1 week

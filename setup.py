@@ -4,17 +4,16 @@
 # pylint: disable=exec-used
 
 import os
-
-from setuptools import setup
+import setuptools
 
 RELEASE_INFO = {}
-RELEASE_PATH = os.path.join('ska_sdp_lmc', 'release.py')
+RELEASE_PATH = os.path.join('src', 'ska_sdp_lmc', 'release.py')
 exec(open(RELEASE_PATH).read(), RELEASE_INFO)
 
 with open('README.md', 'r') as file:
     LONG_DESCRIPTION = file.read()
 
-setup(
+setuptools.setup(
     name=RELEASE_INFO['NAME'],
     version=RELEASE_INFO['VERSION'],
     description='SKA SDP Local Monitoring and Control (Tango devices)',
@@ -22,11 +21,9 @@ setup(
     license=RELEASE_INFO['LICENSE'],
     long_description=LONG_DESCRIPTION,
     long_description_content_type='text/markdown',
-    url='https://gitlab.com/ska-telescope/sdp-prototype/src/'
-        'lmc',
-    packages=[
-        'ska_sdp_lmc'
-    ],
+    url='https://gitlab.com/ska-telescope/sdp-lmc/',
+    package_dir={'': 'src'},
+    packages=setuptools.find_packages('src'),
     package_data={
         'ska_sdp_lmc': ['schema/*.json']
     },
@@ -46,9 +43,6 @@ setup(
         'pytest',
         'pytest-bdd',
         'pytest-cov',
-        'pytest-json-report',
-        'pytest-pycodestyle',
-        'pytest-pydocstyle',
         'pytest-pylint',
         'ska-telescope-model'
     ],

@@ -1,0 +1,1 @@
+.. mdinclude:: ../../../src/processing_controller/README.md

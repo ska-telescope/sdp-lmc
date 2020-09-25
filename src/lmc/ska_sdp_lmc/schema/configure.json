@@ -1,0 +1,33 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "SDP subarray Configure schema",
+  "description": "Used by the SDP subarray Configure command to validate configuration data",
+  "version": "0.1.0",
+  "type": "object",
+  "required": ["scan_type"],
+  "optional": ["new_scan_types"],
+  "additionalProperties": true,
+  "properties": {
+    "new_scan_types": {
+      "type": "array",
+      "minItems": 1,
+      "items": { "$ref": "#/definitions/scan_type" }
+    },
+    "scan_type": { "$ref": "#/definitions/scantype_id" }
+  },
+  "definitions": {
+    "scantype_id": {
+      "description": "Scan type ID",
+      "type": "string"
+    },
+    "scan_type": {
+      "description": "Scan type",
+      "type": "object",
+      "required": ["id"],
+      "additionalProperties": true,
+      "properties": {
+        "id": { "$ref": "#/definitions/scantype_id" }
+      }
+    }
+  }
+}

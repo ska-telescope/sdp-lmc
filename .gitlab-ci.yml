@@ -31,6 +31,7 @@ test:
   artifacts:
     paths:
       - build
+      - cucumber.json
     expire_in: 1 week
     when: always
 
@@ -96,6 +97,22 @@ publish:
     - make pull
     - make push_release
   retry: 2
+
+# ============================================================================
+# Upload results of BDD tests to Jira (master only)
+# ============================================================================
+
+xray-report:
+  stage: publish
+  only: [master]
+  when: always
+  allow_failure: true
+  retry: 2
+  script:
+    - 'curl -X POST -H "Content-Type: application/json" --fail
+      -H "Authorization: Basic $JIRA_AUTH"
+      --data @cucumber.json
+      https://jira.skatelescope.org/rest/raven/1.0/import/execution/cucumber'
 
 # ============================================================================
 # CI metrics

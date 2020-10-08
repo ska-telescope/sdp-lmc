@@ -14,13 +14,17 @@ LOG = logging.getLogger('ska_sdp_lmc')
 # For some reason the device subclass is not always in the stack when run from
 # BDD and the test class is found instead (might be ok).
 class _CallerFilter(logging.Filter):
+    def __init__(self, ignore=lambda f: False, match=lambda f: True):
+        self.ignore = ignore
+        self.match = match
+
     def filter(self, record: logging.LogRecord) -> bool:
         if record.pathname == __file__:
             frames = inspect.stack()
             for frame in frames:
-                if frame.filename == __file__:
+                if self.ignore(frame):
                     continue
-                if 'lmc' in frame.filename:
+                if self.match(frame):
                     break
             record.funcName = frame.function
             record.filename = pathlib.Path(frame.filename).name
@@ -28,7 +32,9 @@ class _CallerFilter(logging.Filter):
         return True
 
 
-LOG.addFilter(_CallerFilter())
+LOG.addFilter(_CallerFilter(
+    ignore=lambda f: f.filename == __file__,
+    match=lambda f: any([text in f.filename for text in ('lmc', 'tests')])))
 
 
 def terminate(signame, frame):

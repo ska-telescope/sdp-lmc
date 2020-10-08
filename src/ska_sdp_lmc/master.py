@@ -1,19 +1,17 @@
 """SDP Master Tango device module."""
 
-import sys
 import signal
-import logging
 
 from tango import AttrWriteType, DevState, LogLevel
 from tango.server import attribute, command, run
 
-from . import tango_logging
-from .attributes import HealthState
-from .base import SDPDevice
-from .util import terminate, log_command
+# Note that relative imports are incompatible with main.
+from ska_sdp_lmc import tango_logging
+from ska_sdp_lmc.attributes import HealthState
+from ska_sdp_lmc.base import SDPDevice
+from ska_sdp_lmc.util import terminate, log_command
 
-tango_logging.configure(device_name='SDPMaster')
-LOG = logging.getLogger('ska_sdp_lmc')
+LOG = tango_logging.get_logger()
 
 
 class SDPMaster(SDPDevice):
@@ -124,12 +122,13 @@ class SDPMaster(SDPDevice):
 def main(args=None, **kwargs):
     """Run server."""
     # Initialise logging
-    log_level = LogLevel.LOG_INFO
-    if len(sys.argv) > 2 and '-v' in sys.argv[2]:
-        log_level = LogLevel.LOG_DEBUG
-    tango_logging.set_level(log_level)
+    tango_logging.main(device_name='SDPMaster')
 
     # Register SIGTERM handler
     signal.signal(signal.SIGTERM, terminate)
 
     return run((SDPMaster,), args=args, **kwargs)
+
+
+if __name__ == '__main__':
+    main()

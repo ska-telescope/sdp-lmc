@@ -8,8 +8,9 @@ from pytest_bdd import (given, parsers, scenarios, then, when)
 
 import tango
 
-from ska_sdp_lmc import HealthState
+from ska_sdp_lmc import HealthState, tango_logging
 
+DEVICE_NAME = 'test_sdp/elt/master'
 
 # -------------------------------
 # Get scenarios from feature file
@@ -29,7 +30,8 @@ def master_device(devices):
     :param devices: the devices in a MultiDeviceTestContext
 
     """
-    device = devices.get_device('test_sdp/elt/master')
+    tango_logging.configure(device_name=DEVICE_NAME)
+    device = devices.get_device(DEVICE_NAME)
     return device
 
 

@@ -8,9 +8,7 @@
 # pylint: disable=E0202
 
 import os
-import sys
 import signal
-import logging
 import threading
 import json
 
@@ -21,21 +19,20 @@ from tango.server import attribute, command, run
 
 import ska_sdp_config
 
-from . import tango_logging
-from .attributes import AdminMode, HealthState, ObsState
-from .base import SDPDevice
-from .util import terminate, log_command, log_lines
-from .subarray_config import SubarrayConfig, FEATURE_CONFIG_DB
-from .feature_toggle import FeatureToggle
+# Note that relative imports are incompatible with main.
+from ska_sdp_lmc import tango_logging
+from ska_sdp_lmc.attributes import AdminMode, HealthState, ObsState
+from ska_sdp_lmc.base import SDPDevice
+from ska_sdp_lmc.util import terminate, log_command, log_lines
+from ska_sdp_lmc.subarray_config import SubarrayConfig, FEATURE_CONFIG_DB
+from ska_sdp_lmc.feature_toggle import FeatureToggle
 
 FEATURE_EVENT_LOOP = FeatureToggle('event_loop', True)
 
 MSG_CONFIG_STR = 'Configuration string:'
 MSG_VALIDATION_FAILED = 'Configuration validation failed'
 MSG_DUPLICATE_ID = 'Duplicate SBI ID or PB ID in configuration'
-
-tango_logging.configure(device_name='SDPSubarray')
-LOG = logging.getLogger('ska_sdp_lmc')
+LOG = tango_logging.get_logger()
 
 
 class SDPSubarray(SDPDevice):
@@ -897,12 +894,13 @@ class SDPSubarray(SDPDevice):
 def main(args=None, **kwargs):
     """Run server."""
     # Initialise logging
-    log_level = LogLevel.LOG_INFO
-    if len(sys.argv) > 2 and '-v' in sys.argv[2]:
-        log_level = LogLevel.LOG_DEBUG
-    tango_logging.set_level(log_level)
+    tango_logging.main(device_name='SDPSubarray')
 
     # Register SIGTERM handler.
     signal.signal(signal.SIGTERM, terminate)
 
     return run((SDPSubarray,), args=args, **kwargs)
+
+
+if __name__ == '__main__':
+    main()

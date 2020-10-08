@@ -5,6 +5,7 @@
 import inspect
 import logging
 import pathlib
+import sys
 import threading
 import typing
 
@@ -54,6 +55,7 @@ class LogManager:
         # There are two levels of indirection.
         # Remember the right frame in a thread-safe way.
         self.frames[threading.current_thread()] = inspect.stack()[2]
+        print(f'frames {self.frames}')
         logging.log(level, msg, *args)
 
 
@@ -65,12 +67,7 @@ class TangoFilter(logging.Filter):
     """
 
     tags = ()
-
-    def __init__(self, *tags):
-        """Initialise the constructor."""
-        super().__init__()
-        TangoFilter.tags = tags
-        self.log_man = LogManager()
+    log_man = LogManager()
 
     def filter(self, record: logging.LogRecord) -> bool:
         """
@@ -87,8 +84,8 @@ class TangoFilter(logging.Filter):
             thread = threading.current_thread()
             # The thread should be in the dictionary, but may not be if the
             # module has been reloaded e.g. by unit test.
-            if thread in self.log_man.frames:
-                frame = self.log_man.frames[thread]
+            if thread in TangoFilter.log_man.frames:
+                frame = TangoFilter.log_man.frames[thread]
                 record.funcName = frame.function
                 record.filename = pathlib.Path(frame.filename).name
                 record.lineno = frame.lineno
@@ -104,8 +101,18 @@ def set_level(level: tango.LogLevel) -> None:
     logging.getLogger().setLevel(to_python_level(level))
 
 
-def configure(level=tango.LogLevel.LOG_INFO, device_name='',
-              device_class=None):
+def get_logger() -> logging.Logger:
+    """
+    Get a logger instance.
+
+    Call this after configuring.
+    :return: logger
+    """
+    return logging.getLogger('ska_sdp_lmc')
+
+
+def configure(level=tango.LogLevel.LOG_INFO, device_name: str = '',
+              device_class=None) -> None:
     """Configure logging for a TANGO device.
 
     This modifies the logging behaviour of the device class.
@@ -118,14 +125,28 @@ def configure(level=tango.LogLevel.LOG_INFO, device_name='',
         device_class = tango.DeviceClass
 
     # Monkey patch the tango device logging to redirect to python.
-    tango_filter = TangoFilter(device_name)
-    device_class.debug_stream = tango_filter.log_man.make_fn(logging.DEBUG)
-    device_class.info_stream = tango_filter.log_man.make_fn(logging.INFO)
-    device_class.warn_stream = tango_filter.log_man.make_fn(logging.WARNING)
-    device_class.error_stream = tango_filter.log_man.make_fn(logging.ERROR)
-    device_class.fatal_stream = tango_filter.log_man.make_fn(logging.CRITICAL)
-    device_class.get_logger = lambda self: logging.getLogger()
+    TangoFilter.tags = (device_name,)
+    device_class.debug_stream = TangoFilter.log_man.make_fn(logging.DEBUG)
+    device_class.info_stream = TangoFilter.log_man.make_fn(logging.INFO)
+    device_class.warn_stream = TangoFilter.log_man.make_fn(logging.WARNING)
+    device_class.error_stream = TangoFilter.log_man.make_fn(logging.ERROR)
+    device_class.fatal_stream = TangoFilter.log_man.make_fn(logging.CRITICAL)
+    device_class.get_logger = lambda self: get_logger()
 
     # Now initialise the logging.
     configure_logging(level=to_python_level(level),
                       tags_filter=TangoFilter)
+    get_logger().debug(f'configured logging for device {device_name}')
+
+
+def main(device_name: str = '', device_class=None) -> None:
+    """
+    Configure logging as main program.
+
+    :param device_name: name of TANGO device. default: ''
+    :param device_class: class of TANGO device. default: DeviceClass
+    """
+    log_level = tango.LogLevel.LOG_INFO
+    if len(sys.argv) > 2 and '-v' in sys.argv[2]:
+        log_level = tango.LogLevel.LOG_DEBUG
+    configure(device_name=device_name, device_class=device_class, level=log_level)

@@ -16,12 +16,13 @@ import pytest
 from pytest_bdd import (given, parsers, scenarios, then, when)
 
 import ska_sdp_config
-from ska_sdp_lmc import (AdminMode, HealthState, ObsState, subarray_config)
+from ska_sdp_lmc import (AdminMode, HealthState, ObsState,
+                         subarray_config, tango_logging)
 
 CONFIG_DB_CLIENT = subarray_config.new_config_db()
 SUBARRAY_ID = '01'
 RECEIVE_WORKFLOWS = ['test_receive_addresses']
-
+DEVICE_NAME = 'test_sdp/elt/subarray_1'
 
 # -----------------------------------------------------------------------------
 # Scenarios : Specify what we want the software to do
@@ -42,7 +43,8 @@ def subarray_device(devices):
     :param devices: the devices in a MultiDeviceTestContext
 
     """
-    device = devices.get_device('test_sdp/elt/subarray_1')
+    tango_logging.configure(device_name=DEVICE_NAME)
+    device = devices.get_device(DEVICE_NAME)
 
     # Wipe the config DB
     wipe_config_db()

@@ -5,10 +5,13 @@ import signal
 from tango import AttrWriteType, DevState, LogLevel
 from tango.server import attribute, command, run
 
+from ska_sdp_config.config import Transaction
+
 # Note that relative imports are incompatible with main.
 from ska_sdp_lmc import tango_logging
 from ska_sdp_lmc.attributes import HealthState
 from ska_sdp_lmc.base import SDPDevice
+from ska_sdp_lmc.devices_config import MasterConfig
 from ska_sdp_lmc.util import terminate, log_command
 
 LOG = tango_logging.get_logger()
@@ -40,13 +43,19 @@ class SDPMaster(SDPDevice):
         super().init_device()
         self.set_state(DevState.INIT)
         LOG.info('Initialising SDP Master: %s', self.get_name())
+
         # Initialise attributes
         self._health_state = HealthState.OK
         self.set_state(DevState.STANDBY)
-        LOG.info('SDP Master initialised: %s', self.get_name())
 
-    def always_executed_hook(self):
-        """Run for on each call."""
+        # Get connection to the config DB
+        self._config = MasterConfig()
+        self._config.set_state(DevState.STANDBY)
+
+        # Start event loop
+        self._start_event_loop()
+
+        LOG.info('SDP Master initialised: %s', self.get_name())
 
     def delete_device(self):
         """Device destructor."""
@@ -77,7 +86,7 @@ class SDPMaster(SDPDevice):
     @command()
     def On(self):
         """Turn the SDP on."""
-        self.set_state(DevState.ON)
+        self._config.set_state(DevState.ON)
 
     def is_Disable_allowed(self):
         """Check if the Disable command is allowed."""
@@ -90,7 +99,7 @@ class SDPMaster(SDPDevice):
     @command()
     def Disable(self):
         """Set the SDP to disable."""
-        self.set_state(DevState.DISABLE)
+        self._config.set_state(DevState.DISABLE)
 
     def is_Standby_allowed(self):
         """Check if the Standby command is allowed."""
@@ -103,7 +112,7 @@ class SDPMaster(SDPDevice):
     @command()
     def Standby(self):
         """Set the SDP to standby."""
-        self.set_state(DevState.STANDBY)
+        self._config.set_state(DevState.STANDBY)
 
     def is_Off_allowed(self):
         """Check if the Off command is allowed."""
@@ -116,7 +125,11 @@ class SDPMaster(SDPDevice):
     @command()
     def Off(self):
         """Turn the SDP off."""
-        self.set_state(DevState.OFF)
+        self._config.set_state(DevState.OFF)
+
+    # This is called from the event loop.
+    def _set_from_config(self, txn: Transaction) -> None:
+        self._set_state(self._config.get_state(txn))
 
 
 def main(args=None, **kwargs):

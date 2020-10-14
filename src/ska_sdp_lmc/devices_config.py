@@ -1,8 +1,9 @@
-"""Config DB related tasks for SDP subarray."""
+"""Config DB related tasks for SDP devices."""
 
 import logging
 from typing import Dict, List, Tuple, Optional
 
+import tango
 import ska_sdp_config
 from .feature_toggle import FeatureToggle
 
@@ -19,21 +20,67 @@ def new_config_db():
     return config_db
 
 
-class SubarrayConfig:
-    """Class to interact with subarray configuration in DB."""
-
-    # pylint: disable=invalid-name
-
-    def __init__(self, subarray_id):
+class DeviceConfig:
+    """Base class to interact with configuration database."""
+    def __init__(self, device_id):
         """Create the object."""
         self.db_client = new_config_db()
-        self.subarray_id = subarray_id
+        self.device_id = device_id
 
     def _lock(self) -> None:
         """Synchronize placeholder."""
 
     def _unlock(self) -> None:
         """Synchronize placeholder."""
+
+    def txn(self):
+        """
+        Convenience method to create a transaction.
+
+        :returns: transaction
+        """
+        return self.db_client.txn()
+
+
+class MasterConfig(DeviceConfig):
+    """Class to interact with master device configuration in DB."""
+    def __init__(self):
+        """Create the object."""
+        super().__init__('/master')
+
+    def set_state(self, state: tango.DevState) -> None:
+        """
+        Set the state in the DB.
+
+        :param state: tango device state
+        """
+        # Probably should update config db api for this.
+        # For now at least, use the raw transaction directly.
+        state_str = state.name.lower()
+        for txn in self.txn():
+            try:
+                txn.raw.update(self.device_id, state_str)
+            except ska_sdp_config.ConfigVanished:
+                txn.raw.create(self.device_id, state_str)
+
+    def get_state(self, txn: ska_sdp_config.config.Transaction) -> tango.DevState:
+        """
+        Get the state from the database.
+
+        :param txn: database transaction
+        :returns: tango device state
+        """
+        state = txn.raw.get(self.device_id)
+        return tango.DevState.names[state.upper()]
+
+
+class SubarrayConfig(DeviceConfig):
+    """Class to interact with subarray configuration in DB."""
+    def __init__(self, subarray_id):
+        """Create the object."""
+        super().__init__(subarray_id)
+
+    # pylint: disable=invalid-name
 
     def init_subarray(self, subarray: Dict) -> None:
         """Initialise subarray in config DB.
@@ -44,10 +91,10 @@ class SubarrayConfig:
         and obsState EMPTY.
 
         """
-        for txn in self.db_client.txn():
+        for txn in self.txn():
             subarray_ids = txn.list_subarrays()
-            if self.subarray_id not in subarray_ids:
-                txn.create_subarray(self.subarray_id, subarray)
+            if self.device_id not in subarray_ids:
+                txn.create_subarray(self.device_id, subarray)
 
     def create_sbi_pbs(self, subarray: Dict, sbi: Dict, pbs: List) -> None:
         """Create new SBI and PBs, and update subarray in config DB.
@@ -57,10 +104,10 @@ class SubarrayConfig:
         :param pbs: list of new PBs to create
 
         """
-        for txn in self.db_client.txn():
-            subarray_tmp = txn.get_subarray(self.subarray_id)
+        for txn in self.txn():
+            subarray_tmp = txn.get_subarray(self.device_id)
             subarray_tmp.update(subarray)
-            txn.update_subarray(self.subarray_id, subarray_tmp)
+            txn.update_subarray(self.device_id, subarray_tmp)
             sbi_id = sbi.get('id')
             txn.create_scheduling_block(sbi_id, sbi)
             for pb in pbs:
@@ -74,12 +121,12 @@ class SubarrayConfig:
         :param sbi: update to SBI (optional)
 
         """
-        for txn in self.db_client.txn():
-            subarray_state = txn.get_subarray(self.subarray_id)
+        for txn in self.txn():
+            subarray_state = txn.get_subarray(self.device_id)
             sbi_id = subarray_state.get('sbi_id')
             if subarray:
                 subarray_state.update(subarray)
-                txn.update_subarray(self.subarray_id, subarray_state)
+                txn.update_subarray(self.device_id, subarray_state)
             if sbi and sbi_id:
                 sbi_state = txn.get_scheduling_block(sbi_id)
                 sbi_state.update(sbi)
@@ -91,7 +138,7 @@ class SubarrayConfig:
         :returns: list of SBI IDs and list of PB IDs
 
         """
-        for txn in self.db_client.txn():
+        for txn in self.txn():
             sbi_ids = txn.list_scheduling_blocks()
             pb_ids = txn.list_processing_blocks()
 
@@ -103,8 +150,8 @@ class SubarrayConfig:
         :returns: SBI
 
         """
-        for txn in self.db_client.txn():
-            subarray = txn.get_subarray(self.subarray_id)
+        for txn in self.txn():
+            subarray = txn.get_subarray(self.device_id)
             sbi_id = subarray.get('sbi_id')
             if sbi_id:
                 sbi = txn.get_scheduling_block(sbi_id)

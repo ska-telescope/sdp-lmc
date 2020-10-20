@@ -129,12 +129,7 @@ class SDPSubarray(SDPDevice):
 
         # Start event loop
         self._event_loop = self._start_event_loop()
-
         LOG.info('SDP Subarray initialised: %s', self.get_name())
-
-    def delete_device(self):
-        """Device destructor."""
-        LOG.info('Deleting subarray device: %s', self.get_name())
 
     # -----------------
     # Attribute methods

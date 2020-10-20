@@ -54,11 +54,7 @@ class SDPMaster(SDPDevice):
 
         # Start event loop
         self._start_event_loop()
-
         LOG.info('SDP Master initialised: %s', self.get_name())
-
-    def delete_device(self):
-        """Device destructor."""
 
     # -----------------
     # Attribute methods

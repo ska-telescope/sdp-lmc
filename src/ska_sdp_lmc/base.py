@@ -40,6 +40,11 @@ class SDPDevice(Device):
         super().init_device()
         self._version = release.VERSION
 
+    def delete_device(self):
+        """Device destructor."""
+        LOG.info('Deleting %s device: %s', self._get_device_name().lower(),
+                 self.get_name())
+
     def always_executed_hook(self):
         """Run for on each call."""
 
@@ -60,6 +65,11 @@ class SDPDevice(Device):
         if self.get_state() != value:
             LOG.debug('Setting device state to %s', value.name)
             self.set_state(value)
+
+    @classmethod
+    def _get_device_name(cls):
+        # This gets the class name minus SDP e.g. Master
+        return cls.__name__.split('SDP')[1]
 
     # ------------------
     # Event loop methods
@@ -108,6 +118,7 @@ class SDPDevice(Device):
                 txn.loop(wait=True)
 
     def _set_from_config(self, txn: Transaction) -> None:
+        """Subclasses override this to set their state."""
         pass
 
     @staticmethod

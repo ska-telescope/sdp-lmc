@@ -1,14 +1,14 @@
 SDP Local Monitoring and Control
 ================================
 
+These are the Tango device servers implemented in the SDP.
+
 .. toctree::
   :maxdepth: 1
-  :caption: LMC
 
-  lmc/sdp_master
-  lmc/sdp_subarray
-  lmc/building_and_testing
-
+  sdp_master
+  sdp_subarray
+  building_and_testing
 
 Indices and tables
 ------------------

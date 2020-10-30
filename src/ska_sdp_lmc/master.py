@@ -50,7 +50,7 @@ class SDPMaster(SDPDevice):
 
         # Get connection to the config DB
         self._config = MasterConfig()
-        self._config.set_state(DevState.STANDBY)
+        self._config.state = DevState.STANDBY
 
         # Start event loop
         self._start_event_loop()
@@ -82,7 +82,7 @@ class SDPMaster(SDPDevice):
     @command()
     def On(self):
         """Turn the SDP on."""
-        self._config.set_state(DevState.ON)
+        self._config.state = DevState.ON
 
     def is_Disable_allowed(self):
         """Check if the Disable command is allowed."""
@@ -95,7 +95,7 @@ class SDPMaster(SDPDevice):
     @command()
     def Disable(self):
         """Set the SDP to disable."""
-        self._config.set_state(DevState.DISABLE)
+        self._config.state = DevState.DISABLE
 
     def is_Standby_allowed(self):
         """Check if the Standby command is allowed."""
@@ -108,7 +108,7 @@ class SDPMaster(SDPDevice):
     @command()
     def Standby(self):
         """Set the SDP to standby."""
-        self._config.set_state(DevState.STANDBY)
+        self._config.state = DevState.STANDBY
 
     def is_Off_allowed(self):
         """Check if the Off command is allowed."""
@@ -121,11 +121,13 @@ class SDPMaster(SDPDevice):
     @command()
     def Off(self):
         """Turn the SDP off."""
-        self._config.set_state(DevState.OFF)
+        self._config.state = DevState.OFF
 
     # This is called from the event loop.
     def _set_from_config(self, txn: Transaction) -> None:
-        self._set_state(self._config.get_state(txn))
+        state = self._config.get_state(txn)
+        if state is not None:
+            self._set_state(state)
 
 
 def main(args=None, **kwargs):

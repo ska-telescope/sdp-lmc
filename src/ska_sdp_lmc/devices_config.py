@@ -46,32 +46,48 @@ class MasterConfig(DeviceConfig):
     """Class to interact with master device configuration in DB."""
     def __init__(self):
         """Create the object."""
-        super().__init__('/master')
+        super().__init__('master')
 
-    def set_state(self, state: tango.DevState) -> None:
+    @property
+    def state(self) -> Optional[tango.DevState]:
+        """
+        Get the state from the database.
+
+        :returns: tango device state
+        """
+        state = None
+        for txn in self.txn():
+            state = self.get_state(txn)
+        return state
+
+    @state.setter
+    def state(self, state: tango.DevState) -> None:
         """
         Set the state in the DB.
 
         :param state: tango device state
         """
-        # Probably should update config db api for this.
-        # For now at least, use the raw transaction directly.
-        state_str = state.name.lower()
+        state_dict = {'state': state.name.lower()}
         for txn in self.txn():
             try:
-                txn.raw.update(self.device_id, state_str)
+                txn.update_master(state_dict)
             except ska_sdp_config.ConfigVanished:
-                txn.raw.create(self.device_id, state_str)
+                txn.create_master(state_dict)
 
-    def get_state(self, txn: ska_sdp_config.config.Transaction) -> tango.DevState:
+    @staticmethod
+    def get_state(txn: ska_sdp_config.config.Transaction) -> Optional[tango.DevState]:
         """
         Get the state from the database.
 
         :param txn: database transaction
         :returns: tango device state
         """
-        state = txn.raw.get(self.device_id)
-        return tango.DevState.names[state.upper()]
+        state = txn.get_master()['state'].upper()
+        if state in tango.DevState.names:
+            return tango.DevState.names[state]
+        else:
+            LOG.warning('Invalid state in db: %s', state)
+            return None
 
 
 class SubarrayConfig(DeviceConfig):

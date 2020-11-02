@@ -148,4 +148,7 @@ def command_raises_dev_failed_error(master_device, command):
 
 def wipe_config_db():
     """Remove all entries in the config DB."""
-    CONFIG_DB_CLIENT.backend.delete('/master', must_exist=False)
+    print(f'backend before {CONFIG_DB_CLIENT.backend}')
+    CONFIG_DB_CLIENT.backend.delete('/master', must_exist=False, recursive=True)
+    tango_logging.set_transaction_id('')
+    print(f'backend after {CONFIG_DB_CLIENT.backend}')

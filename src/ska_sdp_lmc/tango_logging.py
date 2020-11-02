@@ -66,7 +66,8 @@ class TangoFilter(logging.Filter):
     then supports a "stacklevel" keyword.
     """
 
-    tags = ()
+    device_name = ''
+    transaction_id = ''
     log_man = LogManager()
 
     def filter(self, record: logging.LogRecord) -> bool:
@@ -76,7 +77,10 @@ class TangoFilter(logging.Filter):
         :param record: log record
         :return: true if record should be logged (always)
         """
-        record.tags = ','.join(TangoFilter.tags)
+        tags = TangoFilter.device_name
+        if TangoFilter.transaction_id:
+            tags += ','+TangoFilter.transaction_id
+        record.tags = tags
 
         # If the record originates from this module, insert the
         # right frame info.
@@ -99,6 +103,15 @@ def set_level(level: tango.LogLevel) -> None:
     :param level: tango level to log
     """
     logging.getLogger().setLevel(to_python_level(level))
+
+
+def set_transaction_id(txn_id: str) -> None:
+    """
+    Inject transaction id into logging.
+
+    :param txn_id: transaction id
+    """
+    TangoFilter.transaction_id = txn_id
 
 
 def get_logger() -> logging.Logger:
@@ -125,7 +138,7 @@ def configure(level=tango.LogLevel.LOG_INFO, device_name: str = '',
         device_class = tango.DeviceClass
 
     # Monkey patch the tango device logging to redirect to python.
-    TangoFilter.tags = (device_name,)
+    TangoFilter.device_name = device_name
     device_class.debug_stream = TangoFilter.log_man.make_fn(logging.DEBUG)
     device_class.info_stream = TangoFilter.log_man.make_fn(logging.INFO)
     device_class.warn_stream = TangoFilter.log_man.make_fn(logging.WARNING)

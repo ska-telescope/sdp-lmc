@@ -1,11 +1,15 @@
 """Config DB related tasks for SDP devices."""
-
+import functools
 import logging
-from typing import Dict, List, Tuple, Optional
+from typing import Dict, List, Tuple, Optional, Callable
 
 import tango
+
+from ska.log_transactions import transaction
 import ska_sdp_config
+
 from .feature_toggle import FeatureToggle
+from .tango_logging import set_transaction_id
 
 FEATURE_CONFIG_DB = FeatureToggle('config_db', True)
 
@@ -22,10 +26,11 @@ def new_config_db():
 
 class DeviceConfig:
     """Base class to interact with configuration database."""
-    def __init__(self, device_id):
+    def __init__(self, device_id: str):
         """Create the object."""
         self.db_client = new_config_db()
         self.device_id = device_id
+        self._txn_key = '/'+device_id+'/transaction_id'
 
     def _lock(self) -> None:
         """Synchronize placeholder."""
@@ -40,6 +45,71 @@ class DeviceConfig:
         :returns: transaction
         """
         return self.db_client.txn()
+
+    @property
+    def transaction_id(self) -> str:
+        """
+        Get the transaction id from the database.
+
+        :returns: transaction id
+        """
+        txn_id = None
+        for txn in self.txn():
+            txn_id = self.get_transaction_id(txn)
+        return txn_id
+
+    def get_transaction_id(self, txn: ska_sdp_config.config.Transaction) -> str:
+        """
+        Get the transaction id from the database.
+
+        :param txn: database transaction
+        :returns: transaction id
+        """
+        txn_id = txn.raw.get(self._txn_key)
+        return '' if txn_id is None else txn_id
+
+    @transaction_id.setter
+    def transaction_id(self, transaction_id: str) -> None:
+        """
+        Set the transaction in the DB.
+
+        :param transaction_id: transaction id
+        """
+        # Inject id into the logging system.
+        LOG.info('Set transaction id to %s', transaction_id)
+        set_transaction_id(transaction_id)
+
+        # Update the database.
+        for txn in self.txn():
+            try:
+                txn.raw.update(self._txn_key, transaction_id)
+            except ska_sdp_config.ConfigVanished:
+                txn.raw.create(self._txn_key, transaction_id)
+        LOG.info('backend %s', self.db_client.backend)
+
+
+def transaction_command(command_function: Callable):
+    """
+    Decorate a command function call in a device to add transaction processing.
+
+    :param command_function: to decorate
+    :return: any result of function
+    """
+    @functools.wraps(command_function)
+    def wrapper(self, *args, **kwargs):
+        config: DeviceConfig = self._config
+        name = command_function.__name__
+        LOG.info('-------------------------------------------------------')
+        LOG.info('%s (%s)', name, self.get_name())
+        LOG.info('-------------------------------------------------------')
+        with transaction(name, logger=LOG) as txn_id:
+            config.transaction_id = txn_id
+            ret = command_function(self, *args, **kwargs)
+        LOG.info('-------------------------------------------------------')
+        LOG.info('%s Successful', name)
+        LOG.info('-------------------------------------------------------')
+        return ret
+    return wrapper
 
 
 class MasterConfig(DeviceConfig):

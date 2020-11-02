@@ -31,6 +31,13 @@ class SDPDevice(Device):
         doc='The version of the device'
     )
 
+    transaction_id = attribute(
+        label='Transaction Id',
+        dtype=str,
+        access=AttrWriteType.READ,
+        doc='The current transaction id'
+    )
+
     # ---------------
     # General methods
     # ---------------
@@ -39,6 +46,7 @@ class SDPDevice(Device):
         """Initialise the device."""
         super().init_device()
         self._version = release.VERSION
+        self._transaction_id = ''
 
     def delete_device(self):
         """Device destructor."""
@@ -55,6 +63,17 @@ class SDPDevice(Device):
     def read_version(self):
         """Return server version."""
         return self._version
+
+    def read_transaction_id(self):
+        """Return transaction id."""
+        return self._transaction_id
+
+    def _set_transaction_id(self, value: str):
+        """Set obsState and push a change event."""
+        if self._transaction_id != value:
+            LOG.debug('Setting transaction id to %s', value)
+            self._transaction_id = value
+            self.push_change_event('transaction_id', self._transaction_id)
 
     # ---------------
     # Private methods

@@ -327,6 +327,7 @@ def wipe_config_db():
     CONFIG_DB_CLIENT.backend.delete('/sb', must_exist=False, recursive=True)
     CONFIG_DB_CLIENT.backend.delete('/subarray', must_exist=False,
                                     recursive=True)
+    tango_logging.set_transaction_id('')
 
 
 def set_state_and_obs_state(state, obs_state):

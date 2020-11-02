@@ -11,8 +11,8 @@ from ska_sdp_config.config import Transaction
 from ska_sdp_lmc import tango_logging
 from ska_sdp_lmc.attributes import HealthState
 from ska_sdp_lmc.base import SDPDevice
-from ska_sdp_lmc.devices_config import MasterConfig
-from ska_sdp_lmc.util import terminate, log_command
+from ska_sdp_lmc.devices_config import MasterConfig, transaction_command
+from ska_sdp_lmc.util import terminate
 
 LOG = tango_logging.get_logger()
 
@@ -78,7 +78,7 @@ class SDPMaster(SDPDevice):
         )
         return True
 
-    @log_command
+    @transaction_command
     @command()
     def On(self):
         """Turn the SDP on."""
@@ -91,7 +91,7 @@ class SDPMaster(SDPDevice):
         )
         return True
 
-    @log_command
+    @transaction_command
     @command()
     def Disable(self):
         """Set the SDP to disable."""
@@ -104,7 +104,7 @@ class SDPMaster(SDPDevice):
         )
         return True
 
-    @log_command
+    @transaction_command
     @command()
     def Standby(self):
         """Set the SDP to standby."""
@@ -117,7 +117,7 @@ class SDPMaster(SDPDevice):
         )
         return True
 
-    @log_command
+    @transaction_command
     @command()
     def Off(self):
         """Turn the SDP off."""
@@ -125,6 +125,7 @@ class SDPMaster(SDPDevice):
 
     # This is called from the event loop.
     def _set_from_config(self, txn: Transaction) -> None:
+        self._set_transaction_id(self._config.get_transaction_id(txn))
         state = self._config.get_state(txn)
         if state is not None:
             self._set_state(state)

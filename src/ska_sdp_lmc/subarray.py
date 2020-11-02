@@ -22,8 +22,8 @@ import ska_sdp_config
 from ska_sdp_lmc import tango_logging
 from ska_sdp_lmc.attributes import AdminMode, HealthState, ObsState
 from ska_sdp_lmc.base import SDPDevice
-from ska_sdp_lmc.util import terminate, log_command, log_lines
-from ska_sdp_lmc.devices_config import SubarrayConfig
+from ska_sdp_lmc.util import terminate, log_lines
+from ska_sdp_lmc.devices_config import SubarrayConfig, transaction_command
 
 MSG_CONFIG_STR = 'Configuration string:'
 MSG_VALIDATION_FAILED = 'Configuration validation failed'
@@ -202,7 +202,7 @@ class SDPSubarray(SDPDevice):
         self._command_allowed_obs_state(commname, [ObsState.EMPTY])
         return True
 
-    @log_command
+    @transaction_command
     @command
     def On(self):
         """Turn the subarray on."""
@@ -217,7 +217,7 @@ class SDPSubarray(SDPDevice):
         self._command_allowed_state(commname, [DevState.ON])
         return True
 
-    @log_command
+    @transaction_command
     @command
     def Off(self):
         """Turn the subarray off."""
@@ -243,7 +243,7 @@ class SDPSubarray(SDPDevice):
         self._command_allowed_obs_state(commname, [ObsState.EMPTY])
         return True
 
-    @log_command
+    @transaction_command
     @command(dtype_in=str, doc_in='Resource configuration JSON string')
     def AssignResources(self, config_str):
         """Assign resources to the subarray.
@@ -267,7 +267,7 @@ class SDPSubarray(SDPDevice):
         self._command_allowed_obs_state(commname, [ObsState.IDLE])
         return True
 
-    @log_command
+    @transaction_command
     @command
     def ReleaseResources(self):
         """Release resources assigned to the subarray.
@@ -291,7 +291,7 @@ class SDPSubarray(SDPDevice):
                                                    ObsState.READY])
         return True
 
-    @log_command
+    @transaction_command
     @command(dtype_in=str, doc_in='Scan type configuration JSON string')
     def Configure(self, config_str):
         """Configure scan type.
@@ -314,7 +314,7 @@ class SDPSubarray(SDPDevice):
         self._command_allowed_obs_state(commname, [ObsState.READY])
         return True
 
-    @log_command
+    @transaction_command
     @command(dtype_in=str, doc_in='Scan ID configuration JSON string')
     def Scan(self, config_str):
         """Start scan.
@@ -337,7 +337,7 @@ class SDPSubarray(SDPDevice):
         self._command_allowed_obs_state(commname, [ObsState.SCANNING])
         return True
 
-    @log_command
+    @transaction_command
     @command
     def EndScan(self):
         """End scan."""
@@ -354,7 +354,7 @@ class SDPSubarray(SDPDevice):
         self._command_allowed_obs_state(commname, [ObsState.READY])
         return True
 
-    @log_command
+    @transaction_command
     @command
     def End(self):
         """End."""
@@ -375,7 +375,7 @@ class SDPSubarray(SDPDevice):
         )
         return True
 
-    @log_command
+    @transaction_command
     @command
     def Abort(self):
         """Abort the current activity."""
@@ -392,7 +392,7 @@ class SDPSubarray(SDPDevice):
                                                    ObsState.FAULT])
         return True
 
-    @log_command
+    @transaction_command
     @command
     def ObsReset(self):
         """Reset the subarray to the IDLE obsState."""
@@ -410,7 +410,7 @@ class SDPSubarray(SDPDevice):
                                                    ObsState.FAULT])
         return True
 
-    @log_command
+    @transaction_command
     @command
     def Restart(self):
         """Restart the subarray in the EMPTY obsState."""
@@ -745,9 +745,11 @@ class SDPSubarray(SDPDevice):
 
     def _set_from_config(self, txn: ska_sdp_config.config.Transaction) -> None:
         # Get the following from the config DB:
+        #   - transaction id
         #   - subarray
         #   - SBI
         #   - receive addresses
+        self._set_transaction_id(self._config.get_transaction_id(txn))
         subarray = txn.get_subarray(self._config.device_id)
         sbi_id = subarray.get('sbi_id')
         if sbi_id is None:

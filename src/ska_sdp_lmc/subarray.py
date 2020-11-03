@@ -9,12 +9,11 @@
 
 import os
 import signal
-import threading
 import json
 
 import jsonschema
 
-from tango import AttrWriteType, DevState, LogLevel, EnsureOmniThread
+from tango import AttrWriteType, DevState
 from tango.server import attribute, command, run
 
 import ska_sdp_config
@@ -24,10 +23,7 @@ from ska_sdp_lmc import tango_logging
 from ska_sdp_lmc.attributes import AdminMode, HealthState, ObsState
 from ska_sdp_lmc.base import SDPDevice
 from ska_sdp_lmc.util import terminate, log_command, log_lines
-from ska_sdp_lmc.subarray_config import SubarrayConfig, FEATURE_CONFIG_DB
-from ska_sdp_lmc.feature_toggle import FeatureToggle
-
-FEATURE_EVENT_LOOP = FeatureToggle('event_loop', True)
+from ska_sdp_lmc.devices_config import SubarrayConfig
 
 MSG_CONFIG_STR = 'Configuration string:'
 MSG_VALIDATION_FAILED = 'Configuration validation failed'
@@ -133,15 +129,7 @@ class SDPSubarray(SDPDevice):
 
         # Start event loop
         self._event_loop = self._start_event_loop()
-
         LOG.info('SDP Subarray initialised: %s', self.get_name())
-
-    def always_executed_hook(self):
-        """Run for on each call."""
-
-    def delete_device(self):
-        """Device destructor."""
-        LOG.info('Deleting subarray device: %s', self.get_name())
 
     # -----------------
     # Attribute methods
@@ -527,7 +515,7 @@ class SDPSubarray(SDPDevice):
 
         sbi = {
             'id': sbi_id,
-            'subarray_id': self._config.subarray_id,
+            'subarray_id': self._config.device_id,
             'scan_types': config.get('scan_types'),
             'pb_realtime': [],
             'pb_batch': [],
@@ -709,12 +697,6 @@ class SDPSubarray(SDPDevice):
     # Attribute-setting methods
     # -------------------------
 
-    def _set_state(self, value):
-        """Set device state."""
-        if self.get_state() != value:
-            LOG.debug('Setting device state to %s', value.name)
-            self.set_state(value)
-
     def _set_obs_state(self, value):
         """Set obsState and push a change event."""
         if self._obs_state != value:
@@ -761,101 +743,56 @@ class SDPSubarray(SDPDevice):
             self._scan_id = value
             self.push_change_event('scanID', self._scan_id)
 
-    # ------------------
-    # Event loop methods
-    # ------------------
-
-    def _start_event_loop(self):
-        """Start event loop."""
-        if FEATURE_EVENT_LOOP.is_active():
-            # Start event loop in thread
-            thread = threading.Thread(
-                target=self._event_loop, name='EventLoop', daemon=True
-            )
-            thread.start()
+    def _set_from_config(self, txn: ska_sdp_config.config.Transaction) -> None:
+        # Get the following from the config DB:
+        #   - subarray
+        #   - SBI
+        #   - receive addresses
+        subarray = txn.get_subarray(self._config.device_id)
+        sbi_id = subarray.get('sbi_id')
+        if sbi_id is None:
+            # No SBI, so set values to default
+            sbi = {}
+            receive_addresses = None
         else:
-            # Add command to manually update attributes
-            thread = None
-            cmd = command(f=self.update_attributes)
-            self.add_command(cmd, True)
-        return thread
-
-    def _event_loop(self):
-        """Event loop to update attributes automatically."""
-        LOG.info('Starting event loop')
-        # Use EnsureOmniThread to make it thread-safe under Tango
-        with EnsureOmniThread():
-            self._set_attributes()
-
-    def update_attributes(self):
-        """Update the device attributes manually."""
-        LOG.info('Updating attributes')
-        self._set_attributes(loop=False)
-
-    def _set_attributes(self, loop=True):
-        """Set attributes based on configuration.
-
-        if `loop` is `True`, it acts as an event loop to watch for changes to
-        the configuration. If `loop` is `False` it makes a single pass.
-
-        :param loop: watch for changes to configuration and loop
-
-        """
-        for txn in self._config.db_client.txn():
-
-            # Get the following from the config DB:
-            #   - subarray
-            #   - SBI
-            #   - receive addresses
-            subarray = txn.get_subarray(self._config.subarray_id)
-            sbi_id = subarray.get('sbi_id')
-            if sbi_id is None:
-                # No SBI, so set values to default
-                sbi = {}
+            # Get SBI
+            sbi = txn.get_scheduling_block(sbi_id)
+            # Get receive addresses
+            pb_receive_addresses = sbi.get('pb_receive_addresses')
+            if pb_receive_addresses is None:
                 receive_addresses = None
             else:
-                # Get SBI
-                sbi = txn.get_scheduling_block(sbi_id)
-                # Get receive addresses
-                pb_receive_addresses = sbi.get('pb_receive_addresses')
-                if pb_receive_addresses is None:
-                    receive_addresses = None
-                else:
-                    pb_state = \
-                        txn.get_processing_block_state(pb_receive_addresses)
-                    receive_addresses = pb_state.get('receive_addresses')
+                pb_state = \
+                    txn.get_processing_block_state(pb_receive_addresses)
+                receive_addresses = pb_state.get('receive_addresses')
 
-            # Set device state
-            state = subarray.get('state')
-            self._set_state(DevState.names[state])
+        # Set device state
+        state = subarray.get('state')
+        self._set_state(DevState.names[state])
 
-            # Set obsState
-            obs_state_target = subarray.get('obs_state_target')
-            last_command = subarray.get('last_command')
-            if obs_state_target == 'IDLE' and \
-                    last_command == 'AssignResources':
-                if receive_addresses is None:
-                    obs_state = ObsState.RESOURCING
-                else:
-                    obs_state = ObsState.IDLE
+        # Set obsState
+        obs_state_target = subarray.get('obs_state_target')
+        last_command = subarray.get('last_command')
+        if obs_state_target == 'IDLE' and \
+                last_command == 'AssignResources':
+            if receive_addresses is None:
+                obs_state = ObsState.RESOURCING
             else:
-                obs_state = ObsState[obs_state_target]
-            self._set_obs_state(obs_state)
+                obs_state = ObsState.IDLE
+        else:
+            obs_state = ObsState[obs_state_target]
+        self._set_obs_state(obs_state)
 
-            # Set receive addresses
-            self._set_receive_addresses(receive_addresses)
+        # Set receive addresses
+        self._set_receive_addresses(receive_addresses)
 
-            # Set scan type
-            scan_type = sbi.get('current_scan_type')
-            self._set_scan_type('null' if scan_type is None else scan_type)
+        # Set scan type
+        scan_type = sbi.get('current_scan_type')
+        self._set_scan_type('null' if scan_type is None else scan_type)
 
-            # Set scan ID
-            scan_id = sbi.get('scan_id')
-            self._set_scan_id(0 if scan_id is None else scan_id)
-
-            if loop:
-                # Loop the transaction when the config entries are changed
-                txn.loop(wait=True)
+        # Set scan ID
+        scan_id = sbi.get('scan_id')
+        self._set_scan_id(0 if scan_id is None else scan_id)
 
     # ---------------
     # Utility methods

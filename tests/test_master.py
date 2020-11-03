@@ -8,9 +8,10 @@ from pytest_bdd import (given, parsers, scenarios, then, when)
 
 import tango
 
-from ska_sdp_lmc import HealthState, tango_logging
+from ska_sdp_lmc import HealthState, tango_logging, devices_config
 
 DEVICE_NAME = 'test_sdp/elt/master'
+CONFIG_DB_CLIENT = devices_config.new_config_db()
 
 # -------------------------------
 # Get scenarios from feature file
@@ -32,6 +33,10 @@ def master_device(devices):
     """
     tango_logging.configure(device_name=DEVICE_NAME)
     device = devices.get_device(DEVICE_NAME)
+
+    # Wipe the config DB
+    wipe_config_db()
+
     return device
 
 
@@ -88,6 +93,8 @@ def command(master_device, command):
     command_func = getattr(master_device, command)
     # Call the command
     command_func()
+    # Update the device attributes
+    master_device.update_attributes()
 
 
 # ----------
@@ -133,3 +140,12 @@ def command_raises_dev_failed_error(master_device, command):
     with pytest.raises(tango.DevFailed):
         # Call the command
         command_func()
+
+
+# -----------------------------------------------------------------------------
+# Ancillary functions
+# -----------------------------------------------------------------------------
+
+def wipe_config_db():
+    """Remove all entries in the config DB."""
+    CONFIG_DB_CLIENT.backend.delete('/master', must_exist=False)

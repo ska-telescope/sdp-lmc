@@ -2,13 +2,17 @@
 
 import enum
 import logging
+import threading
 
-from tango import AttrWriteType, ErrSeverity, Except
-from tango.server import Device, attribute
+from tango import AttrWriteType, ErrSeverity, Except, EnsureOmniThread
+from tango.server import Device, command, attribute
 
+from ska_sdp_config.config import Transaction
 from . import release
+from .feature_toggle import FeatureToggle
 
 LOG = logging.getLogger('ska_sdp_lmc')
+FEATURE_EVENT_LOOP = FeatureToggle('event_loop', True)
 
 
 class SDPDevice(Device):
@@ -36,6 +40,14 @@ class SDPDevice(Device):
         super().init_device()
         self._version = release.VERSION
 
+    def delete_device(self):
+        """Device destructor."""
+        LOG.info('Deleting %s device: %s', self._get_device_name().lower(),
+                 self.get_name())
+
+    def always_executed_hook(self):
+        """Run for on each call."""
+
     # -----------------
     # Attribute methods
     # -----------------
@@ -47,6 +59,67 @@ class SDPDevice(Device):
     # ---------------
     # Private methods
     # ---------------
+
+    def _set_state(self, value):
+        """Set device state."""
+        if self.get_state() != value:
+            LOG.debug('Setting device state to %s', value.name)
+            self.set_state(value)
+
+    @classmethod
+    def _get_device_name(cls):
+        # This gets the class name minus SDP e.g. Master
+        return cls.__name__.split('SDP')[1]
+
+    # ------------------
+    # Event loop methods
+    # ------------------
+
+    def _start_event_loop(self):
+        """Start event loop."""
+        if FEATURE_EVENT_LOOP.is_active():
+            # Start event loop in thread
+            thread = threading.Thread(
+                target=self._event_loop, name='EventLoop', daemon=True
+            )
+            thread.start()
+        else:
+            # Add command to manually update attributes
+            thread = None
+            cmd = command(f=self.update_attributes)
+            self.add_command(cmd, True)
+        return thread
+
+    def _event_loop(self):
+        """Event loop to update attributes automatically."""
+        LOG.info('Starting event loop')
+        # Use EnsureOmniThread to make it thread-safe under Tango
+        with EnsureOmniThread():
+            self._set_attributes()
+
+    def update_attributes(self):
+        """Update the device attributes manually."""
+        LOG.info('Updating attributes')
+        self._set_attributes(loop=False)
+
+    def _set_attributes(self, loop: bool = True) -> None:
+        """Set attributes based on configuration.
+
+        if `loop` is `True`, it acts as an event loop to watch for changes to
+        the configuration. If `loop` is `False` it makes a single pass.
+
+        :param loop: watch for changes to configuration and loop
+
+        """
+        for txn in self._config.txn():
+            self._set_from_config(txn)
+            if loop:
+                # Loop the transaction when the config entries are changed
+                txn.loop(wait=True)
+
+    def _set_from_config(self, txn: Transaction) -> None:
+        """Subclasses override this to set their state."""
+        pass
 
     @staticmethod
     def _raise_exception(reason, desc, origin, severity=ErrSeverity.ERR):

@@ -24,6 +24,7 @@ test:
   before_script:
     - pip3 install -r requirements.txt -r requirements-test.txt
   script:
+    - pip3 list
     - python3 setup.py test
   after_script:
     - mkdir -p build/reports

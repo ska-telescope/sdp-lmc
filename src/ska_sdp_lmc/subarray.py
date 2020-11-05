@@ -22,8 +22,8 @@ import ska_sdp_config
 from ska_sdp_lmc import tango_logging
 from ska_sdp_lmc.attributes import AdminMode, HealthState, ObsState
 from ska_sdp_lmc.base import SDPDevice
-from ska_sdp_lmc.util import terminate, log_lines
-from ska_sdp_lmc.devices_config import SubarrayConfig, transaction_command
+from ska_sdp_lmc.util import terminate, log_lines, transaction_command
+from ska_sdp_lmc.devices_config import SubarrayConfig
 
 MSG_CONFIG_STR = 'Configuration string:'
 MSG_VALIDATION_FAILED = 'Configuration validation failed'
@@ -116,11 +116,8 @@ class SDPSubarray(SDPDevice):
         self._set_admin_mode(AdminMode.ONLINE)
         self._set_health_state(HealthState.OK)
 
-        # Get subarray number from the device name
-        subarray_id = self._get_subarray_id()
-
-        # Get connection to the config DB
-        self._config = SubarrayConfig(subarray_id)
+        # Get connection to the config DB; register device and subarray.
+        self._config = SubarrayConfig(self.get_name(), self._get_subarray_id())
 
         # Initialise the subarray entry
         subarray = {'state': 'OFF', 'sbi_id': None}
@@ -128,7 +125,7 @@ class SDPSubarray(SDPDevice):
         self._config.init_subarray(subarray)
 
         # Start event loop
-        self._event_loop = self._start_event_loop()
+        self._start_event_loop()
         LOG.info('SDP Subarray initialised: %s', self.get_name())
 
     # -----------------
@@ -515,7 +512,7 @@ class SDPSubarray(SDPDevice):
 
         sbi = {
             'id': sbi_id,
-            'subarray_id': self._config.device_id,
+            'subarray_id': self._config.id,
             'scan_types': config.get('scan_types'),
             'pb_realtime': [],
             'pb_batch': [],
@@ -750,7 +747,7 @@ class SDPSubarray(SDPDevice):
         #   - SBI
         #   - receive addresses
         self._set_transaction_id(self._config.get_transaction_id(txn))
-        subarray = txn.get_subarray(self._config.device_id)
+        subarray = txn.get_subarray(self._config.id)
         sbi_id = subarray.get('sbi_id')
         if sbi_id is None:
             # No SBI, so set values to default

@@ -1,11 +1,9 @@
 """Config DB related tasks for SDP devices."""
-import functools
 import logging
-from typing import Dict, List, Tuple, Optional, Callable
+from typing import Dict, List, Tuple, Optional
 
 import tango
 
-from ska.log_transactions import transaction
 import ska_sdp_config
 
 from .feature_toggle import FeatureToggle
@@ -25,12 +23,26 @@ def new_config_db():
 
 
 class DeviceConfig:
-    """Base class to interact with configuration database."""
-    def __init__(self, device_id: str):
+    """
+    Base class to interact with configuration database.
+
+    :param device_id: full device id
+    :param sub_id: subarray id, if relevant
+    """
+    def __init__(self, device_id: str, sub_id: str = None):
         """Create the object."""
         self.db_client = new_config_db()
         self.device_id = device_id
+        self._sub_id = sub_id
         self._txn_key = '/'+device_id+'/transaction_id'
+
+    @property
+    def id(self) -> str:
+        """
+        Get an id for this device.
+        :return the sub-id if defined, otherwise the device id.
+        """
+        return self._sub_id if self._sub_id is not None else self.device_id
 
     def _lock(self) -> None:
         """Synchronize placeholder."""
@@ -88,30 +100,6 @@ class DeviceConfig:
         LOG.info('backend %s', self.db_client.backend)
 
 
-def transaction_command(command_function: Callable):
-    """
-    Decorate a command function call in a device to add transaction processing.
-
-    :param command_function: to decorate
-    :return: any result of function
-    """
-    @functools.wraps(command_function)
-    def wrapper(self, *args, **kwargs):
-        config: DeviceConfig = self._config
-        name = command_function.__name__
-        LOG.info('-------------------------------------------------------')
-        LOG.info('%s (%s)', name, self.get_name())
-        LOG.info('-------------------------------------------------------')
-        with transaction(name, logger=LOG) as txn_id:
-            config.transaction_id = txn_id
-            ret = command_function(self, *args, **kwargs)
-        LOG.info('-------------------------------------------------------')
-        LOG.info('%s Successful', name)
-        LOG.info('-------------------------------------------------------')
-        return ret
-    return wrapper
-
-
 class MasterConfig(DeviceConfig):
     """Class to interact with master device configuration in DB."""
     def __init__(self):
@@ -162,9 +150,9 @@ class MasterConfig(DeviceConfig):
 
 class SubarrayConfig(DeviceConfig):
     """Class to interact with subarray configuration in DB."""
-    def __init__(self, subarray_id):
+    def __init__(self, device_id, subarray_id):
         """Create the object."""
-        super().__init__(subarray_id)
+        super().__init__(device_id, sub_id=subarray_id)
 
     # pylint: disable=invalid-name
 
@@ -179,8 +167,8 @@ class SubarrayConfig(DeviceConfig):
         """
         for txn in self.txn():
             subarray_ids = txn.list_subarrays()
-            if self.device_id not in subarray_ids:
-                txn.create_subarray(self.device_id, subarray)
+            if self.id not in subarray_ids:
+                txn.create_subarray(self.id, subarray)
 
     def create_sbi_pbs(self, subarray: Dict, sbi: Dict, pbs: List) -> None:
         """Create new SBI and PBs, and update subarray in config DB.
@@ -191,9 +179,9 @@ class SubarrayConfig(DeviceConfig):
 
         """
         for txn in self.txn():
-            subarray_tmp = txn.get_subarray(self.device_id)
+            subarray_tmp = txn.get_subarray(self.id)
             subarray_tmp.update(subarray)
-            txn.update_subarray(self.device_id, subarray_tmp)
+            txn.update_subarray(self.id, subarray_tmp)
             sbi_id = sbi.get('id')
             txn.create_scheduling_block(sbi_id, sbi)
             for pb in pbs:
@@ -208,11 +196,11 @@ class SubarrayConfig(DeviceConfig):
 
         """
         for txn in self.txn():
-            subarray_state = txn.get_subarray(self.device_id)
+            subarray_state = txn.get_subarray(self.id)
             sbi_id = subarray_state.get('sbi_id')
             if subarray:
                 subarray_state.update(subarray)
-                txn.update_subarray(self.device_id, subarray_state)
+                txn.update_subarray(self.id, subarray_state)
             if sbi and sbi_id:
                 sbi_state = txn.get_scheduling_block(sbi_id)
                 sbi_state.update(sbi)
@@ -237,7 +225,7 @@ class SubarrayConfig(DeviceConfig):
 
         """
         for txn in self.txn():
-            subarray = txn.get_subarray(self.device_id)
+            subarray = txn.get_subarray(self.id)
             sbi_id = subarray.get('sbi_id')
             if sbi_id:
                 sbi = txn.get_scheduling_block(sbi_id)

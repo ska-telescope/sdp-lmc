@@ -2,7 +2,7 @@
 
 import signal
 
-from tango import AttrWriteType, DevState, LogLevel
+from tango import AttrWriteType, DevState
 from tango.server import attribute, command, run
 
 from ska_sdp_config.config import Transaction
@@ -11,8 +11,8 @@ from ska_sdp_config.config import Transaction
 from ska_sdp_lmc import tango_logging
 from ska_sdp_lmc.attributes import HealthState
 from ska_sdp_lmc.base import SDPDevice
-from ska_sdp_lmc.devices_config import MasterConfig, transaction_command
-from ska_sdp_lmc.util import terminate
+from ska_sdp_lmc.devices_config import MasterConfig
+from ska_sdp_lmc.util import terminate, transaction_command
 
 LOG = tango_logging.get_logger()
 

@@ -96,6 +96,10 @@ class SDPDevice(Device):
 
     def _start_event_loop(self):
         """Start event loop."""
+        # The event loop should only be started once.
+        if hasattr(self, '_event_thread'):
+            LOG.info('Event loop already started')
+            return None
         if FEATURE_EVENT_LOOP.is_active():
             # Start event loop in thread
             thread = threading.Thread(
@@ -107,6 +111,7 @@ class SDPDevice(Device):
             thread = None
             cmd = command(f=self.update_attributes)
             self.add_command(cmd, True)
+        self._event_thread = thread
         return thread
 
     def _event_loop(self):

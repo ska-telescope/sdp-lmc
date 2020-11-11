@@ -40,6 +40,9 @@ class SDPDevice(Device):
         super().init_device()
         self._version = release.VERSION
 
+        # Enable change events on the device state
+        self.set_change_event('State', True)
+
     def delete_device(self):
         """Device destructor."""
         LOG.info('Deleting %s device: %s', self._get_device_name().lower(),
@@ -65,6 +68,7 @@ class SDPDevice(Device):
         if self.get_state() != value:
             LOG.debug('Setting device state to %s', value.name)
             self.set_state(value)
+            self.push_change_event('State', self.get_state())
 
     @classmethod
     def _get_device_name(cls):

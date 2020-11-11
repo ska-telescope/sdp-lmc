@@ -37,6 +37,12 @@ def master_device(devices):
     # Wipe the config DB
     wipe_config_db()
 
+    # Initialise the device
+    device.Init()
+
+    # Update the device attributes
+    device.update_attributes()
+
     return device
 
 
@@ -45,13 +51,13 @@ def master_device(devices):
 # ----------
 
 @when('the device is initialised')
-def initialise_device(master_device):
+def initialise_device():
     """Initialise the device.
 
-    :param master_device: SDPMaster device
+    This function does nothing because the 'given' function initialises the
+    device, but a dummy 'when' clause is needed for some of the tests.
 
     """
-    master_device.Init()
 
 
 @when(parsers.parse('the state is {initial_state:S}'))
@@ -63,17 +69,13 @@ def set_device_state(master_device, initial_state):
     :param state_value: desired device state
 
     """
-    current_state = master_device.state().name
+    # Set the device state in the config DB
+    set_state(initial_state)
 
-    if initial_state == 'OFF' and current_state != 'OFF':
-        command(master_device, 'Off')
-    elif initial_state == 'STANDBY' and current_state != 'STANDBY':
-        command(master_device, 'Standby')
-    elif initial_state == 'DISABLE' and current_state != 'DISABLE':
-        command(master_device, 'Disable')
-    elif initial_state == 'ON' and current_state != 'ON':
-        command(master_device, 'On')
+    # Update device attributes
+    master_device.update_attributes()
 
+    # Check that state has been set correctly
     assert master_device.state() == tango.DevState.names[initial_state]
 
 
@@ -148,7 +150,19 @@ def command_raises_dev_failed_error(master_device, command):
 
 def wipe_config_db():
     """Remove all entries in the config DB."""
-    print(f'backend before {CONFIG_DB_CLIENT.backend}')
     CONFIG_DB_CLIENT.backend.delete('/master', must_exist=False, recursive=True)
     tango_logging.set_transaction_id('')
-    print(f'backend after {CONFIG_DB_CLIENT.backend}')
+
+
+def set_state(state):
+    """Set state in the config DB.
+
+    This updates the master entry.
+
+    """
+    # Check state is a valid value
+    assert state in tango.DevState.names
+
+    master = {'state': state}
+    for txn in CONFIG_DB_CLIENT.txn():
+        txn.update_master(master)

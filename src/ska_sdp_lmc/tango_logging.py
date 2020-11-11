@@ -12,7 +12,6 @@ import typing
 import tango
 from ska.logging import configure_logging
 
-
 _TANGO_TO_PYTHON = {
     tango.LogLevel.LOG_FATAL: logging.CRITICAL,
     tango.LogLevel.LOG_ERROR: logging.ERROR,
@@ -29,7 +28,11 @@ def to_python_level(tango_level: tango.LogLevel) -> int:
     :param tango_level: TANGO log level
     :returns: Python log level
     """
-    return _TANGO_TO_PYTHON[tango_level]
+    try:
+        return _TANGO_TO_PYTHON[tango_level]
+    except KeyError:
+        return None
+    
 
 
 class LogManager:

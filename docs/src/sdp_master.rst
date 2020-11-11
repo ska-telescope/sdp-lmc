@@ -64,13 +64,10 @@ Standby None          None        Set device state to STANDBY
 Off     None          None        Set device state to OFF
 ======= ============= =========== ======
 
+Python API
+----------
 
-..
-    this is commented out
+.. autoclass:: ska_sdp_lmc.SDPMaster
+   :members:
+   :undoc-members:
 
-    Python API
-    ----------
-
-    .. automodule:: ska_sdp_lmc.master
-        :members:
-        :undoc-members:

@@ -82,7 +82,8 @@ class SDPSubarray(SDPDevice):
         label='Scan ID',
         dtype=int,
         access=AttrWriteType.READ,
-        doc='Scan ID.'
+        doc='Scan ID.',
+        abs_change=1
     )
 
     # ---------------
@@ -96,7 +97,7 @@ class SDPSubarray(SDPDevice):
         self.set_state(DevState.INIT)
         LOG.info('Initialising SDP Subarray: %s', self.get_name())
 
-        # These attributes are updated with push_change_event
+        # Enable change events on attributes
         self.set_change_event('obsState', True)
         self.set_change_event('adminMode', True)
         self.set_change_event('healthState', True)

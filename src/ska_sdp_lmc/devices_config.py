@@ -1,11 +1,10 @@
 """Config DB related tasks for SDP devices."""
+
 import logging
 from typing import Dict, List, Tuple, Optional
 
 import tango
-
 import ska_sdp_config
-
 from .feature_toggle import FeatureToggle
 from .tango_logging import set_transaction_id
 

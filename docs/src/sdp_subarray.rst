@@ -14,7 +14,7 @@ State Model
 The present implementation is shown in the diagram below. Here the state is the
 combination of the Tango device state and the observing state (obsState).
 
-.. image:: ../images/sdp_subarray_states.svg
+.. image:: images/sdp_subarray_states.svg
    :align: center
 
 
@@ -26,7 +26,7 @@ device is shown below. The SDP Subarray device receives commands from the TMC
 SDP Subarray leaf node, and the consequent changes to the state of SDP are
 reported in the device attributes.
 
-.. image:: ../images/sdp_subarray_interaction_tango.svg
+.. image:: images/sdp_subarray_interaction_tango.svg
    :align: center
 
 
@@ -251,13 +251,9 @@ An example of the argument:
       "id": 1
     }
 
+Python API
+----------
 
-..
-    this is commented out
-
-    Python API
-    ----------
-
-    .. automodule:: ska_sdp_lmc.subarray
-        :members:
-        :undoc-members:
+.. autoclass:: ska_sdp_lmc.SDPSubarray
+   :members:
+   :undoc-members:

@@ -1,12 +1,12 @@
 Feature: SDP Master Device
 
-    Scenario: Device startup
+    Scenario: Device is initialised in the correct state
         Given I have an SDPMaster device
         When the device is initialised
         Then the state should be STANDBY
         And healthState should be OK
 
-    Scenario Outline: Command succeeds
+    Scenario Outline: Command succeeds in allowed state
         Given I have an SDPMaster device
         When the state is <initial_state>
         And I call <command>

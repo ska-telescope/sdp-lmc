@@ -44,12 +44,19 @@ class SDPMaster(SDPDevice):
         self.set_state(DevState.INIT)
         LOG.info('Initialising SDP Master: %s', self.get_name())
 
-        # Initialise attributes
-        self._health_state = HealthState.OK
-        self.set_state(DevState.STANDBY)
+        # Enable change events on attributes
+        self.set_change_event('healthState', True)
+
+        # Initialise private values of attributes
+        self._health_state = None
+
+        # Set attributes not updated by event loop
+        self._set_health_state(HealthState.OK)
 
         # Get connection to the config DB
         self._config = MasterConfig()
+
+        # Set initial device state
         self._config.state = DevState.STANDBY
 
         # Start event loop
@@ -129,6 +136,17 @@ class SDPMaster(SDPDevice):
         state = self._config.get_state(txn)
         if state is not None:
             self._set_state(state)
+
+    # -------------------------
+    # Attribute-setting methods
+    # -------------------------
+
+    def _set_health_state(self, value):
+        """Set healthState and push a change event."""
+        if self._health_state != value:
+            LOG.debug('Setting healthState to %s', value.name)
+            self._health_state = value
+            self.push_change_event('healthState', self._health_state)
 
 
 def main(args=None, **kwargs):

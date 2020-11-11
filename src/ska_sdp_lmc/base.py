@@ -48,6 +48,20 @@ class SDPDevice(Device):
         self._version = release.VERSION
         self._transaction_id = ''
 
+        # Enable change events on the device state
+        self.set_change_event('State', True)
+
+    def delete_device(self):
+        """Device destructor."""
+        LOG.info('Deleting %s device: %s', self._get_device_name().lower(),
+                 self.get_name())
+
+    def always_executed_hook(self):
+        """Run for on each call."""
+
+        # Enable change events on the device state
+        self.set_change_event('State', True)
+
     def delete_device(self):
         """Device destructor."""
         LOG.info('Deleting %s device: %s', self._get_device_name().lower(),
@@ -68,13 +82,6 @@ class SDPDevice(Device):
         """Return transaction id."""
         return self._transaction_id
 
-    def _set_transaction_id(self, value: str):
-        """Set obsState and push a change event."""
-        if self._transaction_id != value:
-            LOG.debug('Setting transaction id to %s', value)
-            self._transaction_id = value
-            self.push_change_event('transaction_id', self._transaction_id)
-
     # ---------------
     # Private methods
     # ---------------
@@ -84,6 +91,14 @@ class SDPDevice(Device):
         if self.get_state() != value:
             LOG.debug('Setting device state to %s', value.name)
             self.set_state(value)
+            self.push_change_event('State', self.get_state())
+
+    def _set_transaction_id(self, value: str):
+        """Set obsState and push a change event."""
+        if self._transaction_id != value:
+            LOG.debug('Setting transaction id to %s', value)
+            self._transaction_id = value
+            self.push_change_event('transaction_id', self._transaction_id)
 
     @classmethod
     def _get_device_name(cls):
@@ -100,6 +115,7 @@ class SDPDevice(Device):
         if hasattr(self, '_event_thread'):
             LOG.info('Event loop already started')
             return None
+
         if FEATURE_EVENT_LOOP.is_active():
             # Start event loop in thread
             thread = threading.Thread(
@@ -111,6 +127,7 @@ class SDPDevice(Device):
             thread = None
             cmd = command(f=self.update_attributes)
             self.add_command(cmd, True)
+
         self._event_thread = thread
         return thread
 

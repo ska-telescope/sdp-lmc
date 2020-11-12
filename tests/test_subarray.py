@@ -16,7 +16,7 @@ import pytest
 from pytest_bdd import (given, parsers, scenarios, then, when)
 
 import ska_sdp_config
-import test_logging
+from . import test_logging
 from ska_sdp_lmc import (AdminMode, HealthState, ObsState,
                          devices_config, tango_logging)
 

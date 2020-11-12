@@ -9,7 +9,7 @@ from pytest_bdd import (given, parsers, scenarios, then, when)
 import tango
 
 from ska_sdp_lmc import HealthState, tango_logging, devices_config
-import test_logging
+from . import test_logging
 
 DEVICE_NAME = 'test_sdp/elt/master'
 CONFIG_DB_CLIENT = devices_config.new_config_db()

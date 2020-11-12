@@ -96,7 +96,6 @@ class DeviceConfig:
                 txn.raw.update(self._txn_key, transaction_id)
             except ska_sdp_config.ConfigVanished:
                 txn.raw.create(self._txn_key, transaction_id)
-        LOG.info('backend %s', self.db_client.backend)
 
 
 class MasterConfig(DeviceConfig):

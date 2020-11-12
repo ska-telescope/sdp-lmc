@@ -16,6 +16,7 @@ import pytest
 from pytest_bdd import (given, parsers, scenarios, then, when)
 
 import ska_sdp_config
+import test_logging
 from ska_sdp_lmc import (AdminMode, HealthState, ObsState,
                          devices_config, tango_logging)
 
@@ -23,6 +24,7 @@ CONFIG_DB_CLIENT = devices_config.new_config_db()
 SUBARRAY_ID = '01'
 RECEIVE_WORKFLOWS = ['test_receive_addresses']
 DEVICE_NAME = 'test_sdp/elt/subarray_1'
+LOG_LIST = test_logging.ListHandler()
 
 # -----------------------------------------------------------------------------
 # Scenarios : Specify what we want the software to do
@@ -43,7 +45,8 @@ def subarray_device(devices):
     :param devices: the devices in a MultiDeviceTestContext
 
     """
-    tango_logging.configure(device_name=DEVICE_NAME)
+    LOG_LIST.list.clear()
+    tango_logging.configure(device_name=DEVICE_NAME, handlers=[LOG_LIST])
     device = devices.get_device(DEVICE_NAME)
 
     # Wipe the config DB
@@ -54,6 +57,7 @@ def subarray_device(devices):
 
     # Update the device attributes
     device.update_attributes()
+    assert 'txn-' not in LOG_LIST.get_last_tag()
 
     return device
 
@@ -146,6 +150,7 @@ def call_command(subarray_device, command):
 
     # Update the device attributes
     subarray_device.update_attributes()
+    assert 'txn-' in LOG_LIST.get_last_tag()
 
 
 # -----------------------------------------------------------------------------

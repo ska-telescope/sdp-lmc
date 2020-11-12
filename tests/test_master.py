@@ -9,9 +9,11 @@ from pytest_bdd import (given, parsers, scenarios, then, when)
 import tango
 
 from ska_sdp_lmc import HealthState, tango_logging, devices_config
+import test_logging
 
 DEVICE_NAME = 'test_sdp/elt/master'
 CONFIG_DB_CLIENT = devices_config.new_config_db()
+LOG_LIST = test_logging.ListHandler()
 
 # -------------------------------
 # Get scenarios from feature file
@@ -31,7 +33,8 @@ def master_device(devices):
     :param devices: the devices in a MultiDeviceTestContext
 
     """
-    tango_logging.configure(device_name=DEVICE_NAME)
+    LOG_LIST.list.clear()
+    tango_logging.configure(device_name=DEVICE_NAME, handlers=[LOG_LIST])
     device = devices.get_device(DEVICE_NAME)
 
     # Wipe the config DB
@@ -42,6 +45,7 @@ def master_device(devices):
 
     # Update the device attributes
     device.update_attributes()
+    assert 'txn-' not in LOG_LIST.get_last_tag()
 
     return device
 
@@ -97,6 +101,7 @@ def command(master_device, command):
     command_func()
     # Update the device attributes
     master_device.update_attributes()
+    assert 'txn-' in LOG_LIST.get_last_tag()
 
 
 # ----------

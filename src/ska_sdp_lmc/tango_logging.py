@@ -10,7 +10,7 @@ import threading
 import typing
 
 import tango
-from ska.logging import configure_logging
+from ska.logging import configure_logging, get_default_formatter
 
 _TANGO_TO_PYTHON = {
     tango.LogLevel.LOG_FATAL: logging.CRITICAL,
@@ -28,11 +28,8 @@ def to_python_level(tango_level: tango.LogLevel) -> int:
     :param tango_level: TANGO log level
     :returns: Python log level
     """
-    try:
-        return _TANGO_TO_PYTHON[tango_level]
-    except KeyError:
-        return None
-    
+    return _TANGO_TO_PYTHON[tango_level]\
+        if tango_level in _TANGO_TO_PYTHON else logging.INFO
 
 
 class LogManager:
@@ -58,7 +55,6 @@ class LogManager:
         # There are two levels of indirection.
         # Remember the right frame in a thread-safe way.
         self.frames[threading.current_thread()] = inspect.stack()[2]
-        print(f'frames {self.frames}')
         logging.log(level, msg, *args)
 
 
@@ -128,7 +124,7 @@ def get_logger() -> logging.Logger:
 
 
 def configure(level=tango.LogLevel.LOG_INFO, device_name: str = '',
-              device_class=None) -> None:
+              device_class=None, handlers=None) -> None:
     """Configure logging for a TANGO device.
 
     This modifies the logging behaviour of the device class.
@@ -136,6 +132,7 @@ def configure(level=tango.LogLevel.LOG_INFO, device_name: str = '',
     :param level: tango level to log. default: INFO
     :param device_name: name of TANGO device. default: ''
     :param device_class: class of TANGO device. default: DeviceClass
+    :param handlers iterable of extra log handlers to install
     """
     if device_class is None:
         device_class = tango.DeviceClass
@@ -152,7 +149,14 @@ def configure(level=tango.LogLevel.LOG_INFO, device_name: str = '',
     # Now initialise the logging.
     configure_logging(level=to_python_level(level),
                       tags_filter=TangoFilter)
-    get_logger().debug(f'configured logging for device {device_name}')
+    log = get_logger()
+    if handlers is not None:
+        filter = TangoFilter()
+        for handler in handlers:
+            handler.addFilter(filter)
+            handler.setFormatter(get_default_formatter(tags=True))
+            log.addHandler(handler)
+    log.debug(f'configured logging for device {device_name}')
 
 
 def main(device_name: str = '', device_class=None) -> None:

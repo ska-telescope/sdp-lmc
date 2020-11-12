@@ -4,3 +4,4 @@ pytango
 jsonschema
 ska-sdp-config >= 0.0.12
 ska_logging >= 0.3.0
+lmcbaseclasses >= 0.7.2

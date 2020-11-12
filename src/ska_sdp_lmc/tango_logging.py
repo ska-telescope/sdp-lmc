@@ -11,6 +11,7 @@ import typing
 
 import tango
 from ska.logging import configure_logging
+from ska.base.base_device import TangoLoggingServiceHandler
 
 _TANGO_TO_PYTHON = {
     tango.LogLevel.LOG_FATAL: logging.CRITICAL,
@@ -135,11 +136,17 @@ def configure(level=tango.LogLevel.LOG_INFO, device_name: str = '',
     device_class.error_stream = TangoFilter.log_man.make_fn(logging.ERROR)
     device_class.fatal_stream = TangoFilter.log_man.make_fn(logging.CRITICAL)
     device_class.get_logger = lambda self: get_logger()
-
     # Now initialise the logging.
     configure_logging(level=to_python_level(level),
                       tags_filter=TangoFilter)
-    get_logger().debug(f'configured logging for device {device_name}')
+    logger = get_logger()
+    ## create a tango handler and add it as an additional handler
+    tango_handler = TangoLoggingServiceHandler(logger)
+    logger.addHandler(tango_handler)
+    # TODO check that change log levels are in sync with both handlers
+    ##
+    logger.debug(f'configured logging for device {device_name}')
+    
 
 
 def main(device_name: str = '', device_class=None) -> None:

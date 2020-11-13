@@ -94,7 +94,7 @@ class SDPDevice(Device):
             self.push_change_event('State', self.get_state())
 
     def _set_transaction_id(self, value: str):
-        """Set obsState and push a change event."""
+        """Set transaction and push a change event."""
         if self._transaction_id != value:
             LOG.debug('Setting transaction id to %s', value)
             self._transaction_id = value

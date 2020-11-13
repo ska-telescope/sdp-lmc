@@ -156,7 +156,7 @@ def configure(level=tango.LogLevel.LOG_INFO, device_name: str = '',
             handler.addFilter(filter)
             handler.setFormatter(get_default_formatter(tags=True))
             log.addHandler(handler)
-    log.debug(f'configured logging for device {device_name}')
+    log.debug(f'Configured logging for device {device_name}')
 
 
 def main(device_name: str = '', device_class=None) -> None:

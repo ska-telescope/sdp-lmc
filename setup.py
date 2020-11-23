@@ -31,7 +31,8 @@ setuptools.setup(
         'pytango',
         'jsonschema',
         'ska-sdp-config>=0.0.11',
-        'ska-logging>=0.3'
+        'ska-logging>=0.3.0',
+        #'ska-log-transactions>=0.1.0',
     ],
     entry_points={
         'console_scripts': ['SDPMaster = ska_sdp_lmc.master:main',
@@ -46,7 +47,11 @@ setuptools.setup(
         'pytest-pylint',
         'ska-telescope-model'
     ],
+    dependency_links=[
+        'https://nexus.engageska-portugal.pt/repository/pypi/simple/',
+    ],
     zip_safe=False,
+    python_requires=">=3.7",
     classifiers=[
         "Development Status :: 3 - Alpha",
         "Environment :: Console",

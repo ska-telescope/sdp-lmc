@@ -15,6 +15,7 @@ Feature: SDP Subarray Device
 		And obsState should be EMPTY
 		And adminMode should be ONLINE
 		And healthState should be OK
+		And the log should not contain a transaction ID
 
 
 	#Required commands are present and they have the correct argument type and return type.
@@ -27,17 +28,17 @@ Feature: SDP Subarray Device
 
 		Examples:
 		| command          | input_type | output_type |
-		| On               | DevVoid    | DevVoid     |
-		| Off              | DevVoid    | DevVoid     |
+		| On               | DevString  | DevVoid     |
+		| Off              | DevString  | DevVoid     |
 		| AssignResources  | DevString  | DevVoid     |
-		| ReleaseResources | DevVoid    | DevVoid     |
+		| ReleaseResources | DevString  | DevVoid     |
 		| Configure        | DevString  | DevVoid     |
-		| End              | DevVoid    | DevVoid     |
+		| End              | DevString  | DevVoid     |
 		| Scan             | DevString  | DevVoid     |
-		| EndScan          | DevVoid    | DevVoid     |
-		| Abort            | DevVoid    | DevVoid     |
-		| ObsReset         | DevVoid    | DevVoid     |
-		| Restart          | DevVoid    | DevVoid     |
+		| EndScan          | DevString  | DevVoid     |
+		| Abort            | DevString  | DevVoid     |
+		| ObsReset         | DevString  | DevVoid     |
+		| Restart          | DevString  | DevVoid     |
 
 
 	#All commands, apart from On, are rejected when the state is OFF.
@@ -69,6 +70,7 @@ Feature: SDP Subarray Device
 		And I call On
 		Then the state should be ON
 		And obsState should be EMPTY
+		And the log should contain a transaction ID
 
 
 	#Off command succeeds in any obsState.
@@ -79,6 +81,7 @@ Feature: SDP Subarray Device
 		And I call Off
 		Then the state should be OFF
 		And obsState should be EMPTY
+		And the log should contain a transaction ID
 
 		Examples:
 		| initial_obs_state |
@@ -102,6 +105,7 @@ Feature: SDP Subarray Device
 		When obsState is <initial_obs_state>
 		And I call <command>
 		Then obsState should be <final_obs_state>
+		And the log should contain a transaction ID
 
 		Examples:
 		| command          | initial_obs_state | final_obs_state |

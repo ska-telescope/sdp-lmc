@@ -2,19 +2,22 @@
 
 import signal
 
-from tango import AttrWriteType, DevState, LogLevel
-from tango.server import attribute, command, run
+from tango import AttrWriteType, DevState
+from tango.server import attribute, run
 
 from ska_sdp_config.config import Transaction
 
 # Note that relative imports are incompatible with main.
-from ska_sdp_lmc import tango_logging
+from ska_sdp_lmc.tango_logging import (
+    get_logger, init_logger, log_transaction_id
+)
 from ska_sdp_lmc.attributes import HealthState
 from ska_sdp_lmc.base import SDPDevice
-from ska_sdp_lmc.devices_config import MasterConfig
-from ska_sdp_lmc.util import terminate, log_command
+from ska_sdp_lmc.commands import command_transaction
+from ska_sdp_lmc.master_config import MasterConfig
+from ska_sdp_lmc.util import terminate
 
-LOG = tango_logging.get_logger()
+LOG = get_logger()
 
 
 class SDPMaster(SDPDevice):
@@ -40,9 +43,11 @@ class SDPMaster(SDPDevice):
 
     def init_device(self):
         """Initialise the device."""
+        init_logger(device_name=self.get_name())
+
+        LOG.info('SDP Master initialising')
         super().init_device()
         self.set_state(DevState.INIT)
-        LOG.info('Initialising SDP Master: %s', self.get_name())
 
         # Enable change events on attributes
         self.set_change_event('healthState', True)
@@ -56,12 +61,15 @@ class SDPMaster(SDPDevice):
         # Get connection to the config DB
         self._config = MasterConfig()
 
-        # Set initial device state
-        self._config.state = DevState.STANDBY
+        # Create device state if it does not exist
+        for txn in self._config.txn():
+            master = self._config.master(txn)
+            master.create_if_not_present(DevState.STANDBY)
 
         # Start event loop
         self._start_event_loop()
-        LOG.info('SDP Master initialised: %s', self.get_name())
+
+        LOG.info('SDP Master initialised')
 
     # -----------------
     # Attribute methods
@@ -85,11 +93,18 @@ class SDPMaster(SDPDevice):
         )
         return True
 
-    @log_command
-    @command()
-    def On(self):
-        """Turn the SDP on."""
-        self._config.state = DevState.ON
+    @command_transaction()
+    def On(self, transaction_id: str):
+        """
+        Turn the SDP on.
+
+        :param transaction_id: transaction ID
+
+        """
+        for txn in self._config.txn():
+            master = self._config.master(txn)
+            master.transaction_id = transaction_id
+            master.state = DevState.ON
 
     def is_Disable_allowed(self):
         """Check if the Disable command is allowed."""
@@ -98,11 +113,18 @@ class SDPMaster(SDPDevice):
         )
         return True
 
-    @log_command
-    @command()
-    def Disable(self):
-        """Set the SDP to disable."""
-        self._config.state = DevState.DISABLE
+    @command_transaction()
+    def Disable(self, transaction_id: str):
+        """
+        Set the SDP to disable.
+
+        :param transaction_id: transaction ID
+
+        """
+        for txn in self._config.txn():
+            master = self._config.master(txn)
+            master.transaction_id = transaction_id
+            master.state = DevState.DISABLE
 
     def is_Standby_allowed(self):
         """Check if the Standby command is allowed."""
@@ -111,11 +133,18 @@ class SDPMaster(SDPDevice):
         )
         return True
 
-    @log_command
-    @command()
-    def Standby(self):
-        """Set the SDP to standby."""
-        self._config.state = DevState.STANDBY
+    @command_transaction()
+    def Standby(self, transaction_id: str):
+        """
+        Set the SDP to standby.
+
+        :param transaction_id: transaction ID
+
+        """
+        for txn in self._config.txn():
+            master = self._config.master(txn)
+            master.transaction_id = transaction_id
+            master.state = DevState.STANDBY
 
     def is_Off_allowed(self):
         """Check if the Off command is allowed."""
@@ -124,17 +153,35 @@ class SDPMaster(SDPDevice):
         )
         return True
 
-    @log_command
-    @command()
-    def Off(self):
-        """Turn the SDP off."""
-        self._config.state = DevState.OFF
+    @command_transaction()
+    def Off(self, transaction_id: str):
+        """
+        Turn the SDP off.
 
-    # This is called from the event loop.
+        :param transaction_id: transaction ID
+
+        """
+        for txn in self._config.txn():
+            master = self._config.master(txn)
+            master.transaction_id = transaction_id
+            master.state = DevState.OFF
+
+    # ------------------
+    # Event loop methods
+    # ------------------
+
     def _set_from_config(self, txn: Transaction) -> None:
-        state = self._config.get_state(txn)
-        if state is not None:
-            self._set_state(state)
+        """
+        Set attributes from configuration.
+
+        This is called from the event loop.
+
+        :param txn: configuration transaction
+
+        """
+        master = self._config.master(txn)
+        with log_transaction_id(master.transaction_id):
+            self._set_state(master.state)
 
     # -------------------------
     # Attribute-setting methods
@@ -143,19 +190,15 @@ class SDPMaster(SDPDevice):
     def _set_health_state(self, value):
         """Set healthState and push a change event."""
         if self._health_state != value:
-            LOG.debug('Setting healthState to %s', value.name)
+            LOG.info('Setting healthState to %s', value.name)
             self._health_state = value
             self.push_change_event('healthState', self._health_state)
 
 
 def main(args=None, **kwargs):
     """Run server."""
-    # Initialise logging
-    tango_logging.main(device_name='SDPMaster')
-
     # Register SIGTERM handler
     signal.signal(signal.SIGTERM, terminate)
-
     return run((SDPMaster,), args=args, **kwargs)
 
 

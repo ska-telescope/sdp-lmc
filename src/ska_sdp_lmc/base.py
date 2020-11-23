@@ -4,12 +4,13 @@ import enum
 import logging
 import threading
 
-from tango import AttrWriteType, ErrSeverity, Except, EnsureOmniThread
+from tango import AttrWriteType, EnsureOmniThread
 from tango.server import Device, command, attribute
 
 from ska_sdp_config.config import Transaction
 from . import release
 from .feature_toggle import FeatureToggle
+from .exceptions import raise_command_not_allowed
 
 LOG = logging.getLogger('ska_sdp_lmc')
 FEATURE_EVENT_LOOP = FeatureToggle('event_loop', True)
@@ -38,10 +39,13 @@ class SDPDevice(Device):
     def init_device(self):
         """Initialise the device."""
         super().init_device()
+
+        # Enable change events on attributes
+        self.set_change_event('State', True)
+
+        # Initialise private values of attributes
         self._version = release.VERSION
 
-        # Enable change events on the device state
-        self.set_change_event('State', True)
 
     def delete_device(self):
         """Device destructor."""
@@ -66,7 +70,7 @@ class SDPDevice(Device):
     def _set_state(self, value):
         """Set device state."""
         if self.get_state() != value:
-            LOG.debug('Setting device state to %s', value.name)
+            LOG.info('Setting device state to %s', value.name)
             self.set_state(value)
             self.push_change_event('State', self.get_state())
 
@@ -81,7 +85,12 @@ class SDPDevice(Device):
 
     def _start_event_loop(self):
         """Start event loop."""
+
         if FEATURE_EVENT_LOOP.is_active():
+            # The event loop should only be started once.
+            if hasattr(self, '_event_thread'):
+                LOG.info('Event loop already started')
+                return
             # Start event loop in thread
             thread = threading.Thread(
                 target=self._event_loop, name='EventLoop', daemon=True
@@ -92,7 +101,8 @@ class SDPDevice(Device):
             thread = None
             cmd = command(f=self.update_attributes)
             self.add_command(cmd, True)
-        return thread
+
+        self._event_thread = thread
 
     def _event_loop(self):
         """Event loop to update attributes automatically."""
@@ -123,51 +133,20 @@ class SDPDevice(Device):
 
     def _set_from_config(self, txn: Transaction) -> None:
         """Subclasses override this to set their state."""
-        pass
 
-    @staticmethod
-    def _raise_exception(reason, desc, origin, severity=ErrSeverity.ERR):
-        """Raise a Tango DevFailed exception.
+    # -----------------------
+    # Command allowed methods
+    # -----------------------
 
-        :param reason: Reason for the error.
-        :param desc: Error description.
-        :param origin: Error origin.
-
-        """
-        LOG.error('Raising DevFailed exception...')
-        LOG.error('Reason: %s', reason)
-        LOG.error('Description: %s', desc)
-        LOG.error('Origin: %s', origin)
-        LOG.error('Severity: %s', severity)
-        Except.throw_exception(reason, desc, origin, severity)
-
-    def _raise_command_not_allowed(self, desc, origin):
-        """Raise a command-not-allowed exception.
-
-        :param desc: Error description.
-        :param origin: Error origin.
-
-        """
-        self._raise_exception('API_CommandNotAllowed', desc, origin)
-
-    def _raise_command_failed(self, desc, origin):
-        """Raise a command-failed exception.
-
-        :param desc: Error description.
-        :param origin: Error origin.
-
-        """
-        self._raise_exception('API_CommandFailed', desc, origin)
-
-    def _command_allowed(self, commname, attrname, value, allowed):
+    def _command_allowed(self, command_name, attribute_name, value, allowed):
         """Check command is allowed when an attribute has its current value.
 
         If the command is not allowed, it raises a Tango API_CommandNotAllowed
         exception. This generic method is used by other methods to check
         specific attributes.
 
-        :param commname: name of the command
-        :param attrname: name of the attribute
+        :param command_name: name of the command
+        :param attribute_name: name of the attribute
         :param value: current attribute value
         :param allowed: list of allowed attribute values
 
@@ -179,17 +158,17 @@ class SDPDevice(Device):
                 value_message = value.name
             else:
                 value_message = value
-            message = f'Command {commname} not allowed when {attrname} is ' \
-                      f'{value_message}'
-            origin = f'{type(self).__name__}.is_{commname}_allowed()'
-            self._raise_command_not_allowed(message, origin)
+            message = f'Command {command_name} not allowed when ' \
+                      f'{attribute_name} is {value_message}'
+            origin = f'{type(self).__name__}.is_{command_name}_allowed()'
+            raise_command_not_allowed(message, origin)
 
-    def _command_allowed_state(self, commname, allowed):
+    def _command_allowed_state(self, command_name, allowed):
         """Check command is allowed in the current device state.
 
-        :param commname: name of the command
+        :param command_name: name of the command
         :param allowed: list of allowed device state values
 
         """
-        self._command_allowed(commname, 'device state', self.get_state(),
+        self._command_allowed(command_name, 'device state', self.get_state(),
                               allowed)

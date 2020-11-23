@@ -5,12 +5,14 @@ Feature: SDP Master Device
         When the device is initialised
         Then the state should be STANDBY
         And healthState should be OK
+        And the log should not contain a transaction ID
 
     Scenario Outline: Command succeeds in allowed state
         Given I have an SDPMaster device
         When the state is <initial_state>
         And I call <command>
         Then the state should be <final_state>
+        And the log should contain a transaction ID
 
         Examples:
         | command | initial_state | final_state |

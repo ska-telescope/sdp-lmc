@@ -16,13 +16,15 @@ import pytest
 from pytest_bdd import (given, parsers, scenarios, then, when)
 
 import ska_sdp_config
+from . import test_logging
 from ska_sdp_lmc import (AdminMode, HealthState, ObsState,
                          devices_config, tango_logging)
 
-CONFIG_DB_CLIENT = devices_config.new_config_db()
+CONFIG_DB_CLIENT = devices_config.new_config_db_client()
 SUBARRAY_ID = '01'
 RECEIVE_WORKFLOWS = ['test_receive_addresses']
 DEVICE_NAME = 'test_sdp/elt/subarray_1'
+LOG_LIST = test_logging.ListHandler()
 
 # -----------------------------------------------------------------------------
 # Scenarios : Specify what we want the software to do
@@ -43,7 +45,6 @@ def subarray_device(devices):
     :param devices: the devices in a MultiDeviceTestContext
 
     """
-    tango_logging.configure(device_name=DEVICE_NAME)
     device = devices.get_device(DEVICE_NAME)
 
     # Wipe the config DB
@@ -51,6 +52,11 @@ def subarray_device(devices):
 
     # Initialise the device
     device.Init()
+
+    # Configure logging to be captured
+    LOG_LIST.list.clear()
+    tango_logging.configure(device_name=DEVICE_NAME, handlers=[LOG_LIST])
+    tango_logging.set_level(tango.LogLevel.LOG_DEBUG)
 
     # Update the device attributes
     device.update_attributes()
@@ -125,19 +131,11 @@ def call_command(subarray_device, command):
     # Get information about the command and the command itself
     command_list = subarray_device.get_command_list()
     assert command in command_list
-    command_config = subarray_device.get_command_config(command)
     command_func = getattr(subarray_device, command)
 
     # Call the command
-    if command_config.in_type == tango.DevVoid:
-        command_func()
-    elif command_config.in_type == tango.DevString:
-
-        config_str = read_command_argument(command)
-        command_func(config_str)
-    else:
-        msg = 'Test cannot handle argument of type {}'
-        raise ValueError(msg.format(command_config.in_type))
+    config_str = read_command_argument(command)
+    command_func(config_str)
 
     if command == 'AssignResources':
         # Create the PB states, including the receive addresses for the receive
@@ -173,26 +171,24 @@ def obs_state_equals(subarray_device, final_obs_state):
     assert subarray_device.obsState == ObsState[final_obs_state]
 
 
-@then(parsers.parse('adminMode should be {expected:S}'))
-def admin_mode_equals(subarray_device, expected):
+@then(parsers.parse('adminMode should be {admin_mode:S}'))
+def admin_mode_equals(subarray_device, admin_mode):
     """Check the Subarray adminMode value.
 
     :param subarray_device: An SDPSubarray device.
-    :param expected: The expected adminMode.
+    :param admin_mode: The expected adminMode.
     """
-    assert subarray_device.adminMode == AdminMode[expected]
+    assert subarray_device.adminMode == AdminMode[admin_mode]
 
 
-@then(parsers.parse('healthState should be {expected:S}'))
-def health_state_equals(subarray_device, expected):
+@then(parsers.parse('healthState should be {health_state:S}'))
+def health_state_equals(subarray_device, health_state):
     """Check the Subarray healthState value.
 
     :param subarray_device: An SDPSubarray device.
-    :param expected: The expected heathState.
+    :param health_state: The expected heathState.
     """
-    assert subarray_device.healthState == HealthState[expected]
-    if expected == 'OK':
-        assert subarray_device.healthState == 0
+    assert subarray_device.healthState == HealthState[health_state]
 
 
 @then('the input type of <command> should be <input_type>')
@@ -235,19 +231,12 @@ def command_raises_dev_failed(subarray_device, command):
     # Get information about the command and the command itself
     command_list = subarray_device.get_command_list()
     assert command in command_list
-    command_config = subarray_device.get_command_config(command)
     command_func = getattr(subarray_device, command)
 
     # Call the command
     with pytest.raises(tango.DevFailed):
-        if command_config.in_type == tango.DevVoid:
-            command_func()
-        elif command_config.in_type == tango.DevString:
-            config_str = read_command_argument(command)
-            command_func(config_str)
-        else:
-            msg = 'Test cannot handle command input of type {}'
-            raise ValueError(msg.format(command_config.in_type))
+        config_str = read_command_argument(command)
+        command_func(config_str)
 
 
 @then(parsers.parse('calling {command:S} with an invalid JSON configuration '
@@ -317,6 +306,18 @@ def receive_addresses_empty(subarray_device):
     assert receive_addresses is None
 
 
+@then('the log should not contain a transaction ID')
+def log_contains_no_transaction_id():
+    """Check that the log does not contain a transaction ID."""
+    assert 'txn-' not in LOG_LIST.get_last_tag()
+
+
+@then('the log should contain a transaction ID')
+def log_contains_transaction_id():
+    """Check that the log does contain a transaction ID."""
+    assert 'txn-' in LOG_LIST.get_last_tag()
+
+
 # -----------------------------------------------------------------------------
 # Ancillary functions
 # -----------------------------------------------------------------------------
@@ -327,6 +328,7 @@ def wipe_config_db():
     CONFIG_DB_CLIENT.backend.delete('/sb', must_exist=False, recursive=True)
     CONFIG_DB_CLIENT.backend.delete('/subarray', must_exist=False,
                                     recursive=True)
+    tango_logging.set_transaction_id('')
 
 
 def set_state_and_obs_state(state, obs_state):
@@ -474,12 +476,17 @@ def read_receive_addresses():
 def read_json_data(filename, decode=False):
     """Read JSON file from data directory.
 
-    :param decode: decode the JSON dat into Python
+    If the file does not exist, it returns an empty JSON object.
+
+    :param decode: decode the JSON data into Python
 
     """
     path = os.path.join(os.path.dirname(__file__), 'data', filename)
-    with open(path, 'r') as file:
-        data = file.read()
+    if os.path.exists(path):
+        with open(path, 'r') as file:
+            data = file.read()
+    else:
+        data = '{}'
     if decode:
         data = json.loads(data)
     return data

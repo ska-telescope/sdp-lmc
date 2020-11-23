@@ -30,7 +30,7 @@ class FeatureToggle:
         :returns: Toggle value.
 
         """
-        env_var = str('toggle_' + self._name).upper()
+        env_var = str('feature_' + self._name).upper()
         if env_var in os.environ:
             value = os.environ.get(env_var) == '1'
         else:

@@ -1,6 +1,4 @@
 """Standard logging for TANGO devices."""
-# pylint: disable=invalid-name
-# pylint: disable=too-few-public-methods
 
 import inspect
 import logging
@@ -8,9 +6,11 @@ import pathlib
 import sys
 import threading
 import typing
+import contextvars
+from contextlib import contextmanager
 
 import tango
-from ska.logging import configure_logging
+from ska.logging import configure_logging, get_default_formatter
 
 _TANGO_TO_PYTHON = {
     tango.LogLevel.LOG_FATAL: logging.CRITICAL,
@@ -28,11 +28,8 @@ def to_python_level(tango_level: tango.LogLevel) -> int:
     :param tango_level: TANGO log level
     :returns: Python log level
     """
-    try:
-        return _TANGO_TO_PYTHON[tango_level]
-    except KeyError:
-        return None
-    
+    return _TANGO_TO_PYTHON[tango_level]\
+        if tango_level in _TANGO_TO_PYTHON else logging.INFO
 
 
 class LogManager:
@@ -41,6 +38,8 @@ class LogManager:
     This is redundant from Python 3.8 as the logging module then supports
     a "stacklevel" keyword.
     """
+
+    # pylint: disable=too-few-public-methods
 
     def __init__(self):
         """Initialise the constructor."""
@@ -58,7 +57,6 @@ class LogManager:
         # There are two levels of indirection.
         # Remember the right frame in a thread-safe way.
         self.frames[threading.current_thread()] = inspect.stack()[2]
-        print(f'frames {self.frames}')
         logging.log(level, msg, *args)
 
 
@@ -69,7 +67,11 @@ class TangoFilter(logging.Filter):
     then supports a "stacklevel" keyword.
     """
 
-    tags = ()
+    # pylint: disable=too-few-public-methods
+
+    device_name = ''
+    # Use a context variable to store the transaction ID
+    transaction_id = contextvars.ContextVar('transaction_id', default='')
     log_man = LogManager()
 
     def filter(self, record: logging.LogRecord) -> bool:
@@ -79,7 +81,11 @@ class TangoFilter(logging.Filter):
         :param record: log record
         :return: true if record should be logged (always)
         """
-        record.tags = ','.join(TangoFilter.tags)
+        tags = 'tango-device:' + TangoFilter.device_name
+        transaction_id = TangoFilter.transaction_id.get()
+        if transaction_id:
+            tags += ',' + transaction_id
+        record.tags = tags
 
         # If the record originates from this module, insert the
         # right frame info.
@@ -104,6 +110,28 @@ def set_level(level: tango.LogLevel) -> None:
     logging.getLogger().setLevel(to_python_level(level))
 
 
+def set_transaction_id(txn_id: str) -> None:
+    """
+    Inject transaction id into logging.
+
+    :param txn_id: transaction id
+    """
+    TangoFilter.transaction_id.set(txn_id)
+
+
+@contextmanager
+def log_transaction_id(txn_id):
+    """
+    Context manager for logging with transaction ID.
+
+    :param txn_id: transaction ID
+
+    """
+    set_transaction_id(txn_id)
+    yield
+    set_transaction_id('')
+
+
 def get_logger() -> logging.Logger:
     """
     Get a logger instance.
@@ -115,7 +143,7 @@ def get_logger() -> logging.Logger:
 
 
 def configure(level=tango.LogLevel.LOG_INFO, device_name: str = '',
-              device_class=None) -> None:
+              device_class=None, handlers=None) -> None:
     """Configure logging for a TANGO device.
 
     This modifies the logging behaviour of the device class.
@@ -123,12 +151,13 @@ def configure(level=tango.LogLevel.LOG_INFO, device_name: str = '',
     :param level: tango level to log. default: INFO
     :param device_name: name of TANGO device. default: ''
     :param device_class: class of TANGO device. default: DeviceClass
+    :param handlers iterable of extra log handlers to install
     """
     if device_class is None:
         device_class = tango.DeviceClass
 
     # Monkey patch the tango device logging to redirect to python.
-    TangoFilter.tags = (device_name,)
+    TangoFilter.device_name = device_name
     device_class.debug_stream = TangoFilter.log_man.make_fn(logging.DEBUG)
     device_class.info_stream = TangoFilter.log_man.make_fn(logging.INFO)
     device_class.warn_stream = TangoFilter.log_man.make_fn(logging.WARNING)
@@ -139,12 +168,19 @@ def configure(level=tango.LogLevel.LOG_INFO, device_name: str = '',
     # Now initialise the logging.
     configure_logging(level=to_python_level(level),
                       tags_filter=TangoFilter)
-    get_logger().debug(f'configured logging for device {device_name}')
+    log = get_logger()
+    if handlers is not None:
+        tango_filter = TangoFilter()
+        for handler in handlers:
+            handler.addFilter(tango_filter)
+            handler.setFormatter(get_default_formatter(tags=True))
+            log.addHandler(handler)
+    log.debug('Configured logging for device %s', device_name)
 
 
-def main(device_name: str = '', device_class=None) -> None:
+def init_logger(device_name: str = '', device_class=None) -> None:
     """
-    Configure logging as main program.
+    Configure logging in device initialisation.
 
     :param device_name: name of TANGO device. default: ''
     :param device_class: class of TANGO device. default: DeviceClass

@@ -63,14 +63,6 @@ etcd_test:
   services:
     - name: quay.io/coreos/etcd:latest
       alias: etcd
-      command: ["/usr/local/bin/etcd", "--version"]
-        #- /usr/local/bin/etcd
-        #- "--log-level=debug"
-        #- "--advertise-client-urls=http://0.0.0.0:2379"
-        #- "--listen-client-urls=http://0.0.0.0:2379"
-        #- "--initial-advertise-peer-urls=http://0.0.0.0:2380"
-        #- "--listen-peer-urls=http://0.0.0.0:2380"
-        #- "--initial-cluster=default=http://0.0.0.0:2380"
   variables:
     FEATURE_EVENT_LOOP: 1
     FEATURE_CONFIG_DB: 1

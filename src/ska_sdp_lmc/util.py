@@ -1,8 +1,10 @@
 """Utilities."""
+import copy
 import inspect
 import logging
 import pathlib
 import sys
+from typing import List, Type, Optional
 
 LOG = logging.getLogger('ska_sdp_lmc')
 
@@ -42,3 +44,19 @@ def terminate(signame, frame):
     """Signal handler to exit gracefully."""
     # pylint: disable=unused-argument
     sys.exit()
+
+
+def check_args(cls: Type, args: Optional[List[str]]) -> Optional[List[str]]:
+    """
+    Make sure the first argument has the right name. It should be the name of
+    the class but might not be depending on how it's called. If it isn't
+    the tango database lookup will fail.
+
+    :param cls: class to enforce
+    :param args: command line arguments
+    :return modified arguments
+    """
+    argv = copy.copy(args)
+    if argv:
+        argv[0] = cls.__name__
+    return argv

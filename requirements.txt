@@ -2,6 +2,7 @@
 --extra-index-url https://pypi.org/simple
 pytango
 jsonschema
+lmcbaseclasses >= 0.8
 ska-sdp-config >= 0.0.12
 ska_logging >= 0.3.0
 ska-log-transactions >= 0.1.0

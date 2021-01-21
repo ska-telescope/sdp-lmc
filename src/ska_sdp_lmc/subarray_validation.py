@@ -82,7 +82,7 @@ def _parse_sbi_and_pbs(config):
         if 'dependencies' in pbc:
             if wf_type == 'realtime':
                 LOG.error('dependencies attribute must not appear in '
-                            'real-time processing block configuration')
+                          'real-time processing block configuration')
             if wf_type == 'batch':
                 dependencies = pbc.get('dependencies')
 
@@ -149,9 +149,9 @@ def validate_json_config(config_str, schema_filename):
 
     """
     LOG.debug('Validating JSON configuration against schema %s',
-                schema_filename)
+              schema_filename)
     schema_path = os.path.join(os.path.dirname(__file__), 'schema',
-                                schema_filename)
+                               schema_filename)
 
     config = None
     try:
@@ -161,11 +161,11 @@ def validate_json_config(config_str, schema_filename):
         jsonschema.validate(config, schema)
     except json.JSONDecodeError as error:
         LOG.error('Unable to decode configuration string as JSON: %s',
-                    error.msg)
+                  error.msg)
         config = None
     except jsonschema.ValidationError as error:
         LOG.error('Unable to validate JSON configuration: %s',
-                    error.message)
+                  error.message)
         config = None
 
     if config is not None:

@@ -55,7 +55,7 @@ def subarray_device(devices):
 
     # Configure logging to be captured
     LOG_LIST.list.clear()
-    tango_logging.configure(device_name=DEVICE_NAME, handlers=[LOG_LIST])
+    tango_logging.configure(device, device_name=DEVICE_NAME, handlers=[LOG_LIST])
     tango_logging.set_level(tango.LogLevel.LOG_DEBUG)
 
     # Update the device attributes

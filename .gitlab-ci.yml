@@ -59,6 +59,7 @@ lint:
 
 etcd_test:
   stage: integration
+  image: nexus.engageska-portugal.pt/ska-docker/ska-python-buildenv:latest
   services:
     - name: quay.io/coreos/etcd:latest
       alias: etcd

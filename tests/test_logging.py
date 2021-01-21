@@ -4,7 +4,7 @@ import sys
 import tango
 from typing import Iterable
 
-from ska_sdp_lmc import tango_logging
+from ska_sdp_lmc import tango_logging as tl
 
 MSG = "Running tango test"
 
@@ -31,20 +31,27 @@ class FakeDevice:
     def info_stream(self, _: str, *args) -> None:
         print("info stream should not be called")
 
+    def get_name(self) -> str:
+        return 'fake'
+
     def get_logger(self) -> logging.Logger:
-        return tango_logging.get_logger()
+        return tl.get_logger()
 
 
 def test_stuff():
+    dev = FakeDevice()
+
     sys.argv = ['test']
-    tango_logging.init_logger(device_name='test', device_class=FakeDevice)
+    tl.init_logger(dev)
 
     sys.argv = ['test', 'test', '-v']
-    tango_logging.init_logger(device_name='test', device_class=FakeDevice)
-    tango_logging.set_level(tango.LogLevel.LOG_DEBUG)
+    tl.init_logger(dev)
+    tl.set_level(tango.LogLevel.LOG_DEBUG)
 
-    dev = FakeDevice()
-    log = tango_logging.get_logger()
+    assert tl.to_tango_level(logging.INFO) == tango.LogLevel.LOG_INFO
+    assert tl.to_python_level(tango.LogLevel.LOG_INFO) == logging.INFO
+
+    log = tl.get_logger()
     assert log is dev.get_logger()
     log.info(MSG)
     dev.info_stream(MSG)

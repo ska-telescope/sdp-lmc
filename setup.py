@@ -30,9 +30,9 @@ setuptools.setup(
     install_requires=[
         'pytango',
         'jsonschema',
+        'lmcbaseclasses>=0.8',
         'ska-sdp-config>=0.0.11',
         'ska-logging>=0.3.0',
-        #'ska-log-transactions>=0.1.0',
     ],
     entry_points={
         'console_scripts': ['SDPMaster = ska_sdp_lmc.master:main',

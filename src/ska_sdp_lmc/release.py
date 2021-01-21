@@ -1,7 +1,7 @@
 """Release information for ska-sdp-lmc package."""
 
 NAME = 'ska-sdp-lmc'
-VERSION = '0.15.0'
+VERSION = '0.16.0'
 VERSION_INFO = VERSION.split('.')
 AUTHOR = 'ORCA team, Sim Team'
 LICENSE = 'License :: OSI Approved :: BSD License'

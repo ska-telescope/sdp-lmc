@@ -1,6 +1,7 @@
 """SDP Master Tango device module."""
 
 import signal
+import sys
 
 from tango import AttrWriteType, DevState
 from tango.server import attribute, run
@@ -15,7 +16,7 @@ from ska_sdp_lmc.attributes import HealthState
 from ska_sdp_lmc.base import SDPDevice
 from ska_sdp_lmc.commands import command_transaction
 from ska_sdp_lmc.master_config import MasterConfig
-from ska_sdp_lmc.util import terminate
+from ska_sdp_lmc.util import terminate, check_args
 
 LOG = get_logger()
 
@@ -43,7 +44,7 @@ class SDPMaster(SDPDevice):
 
     def init_device(self):
         """Initialise the device."""
-        init_logger(device_name=self.get_name())
+        init_logger(self)
 
         LOG.info('SDP Master initialising')
         super().init_device()
@@ -203,4 +204,4 @@ def main(args=None, **kwargs):
 
 
 if __name__ == '__main__':
-    main()
+    main(check_args(SDPMaster, sys.argv))

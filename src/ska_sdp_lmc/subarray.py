@@ -3,6 +3,7 @@
 
 import signal
 import json
+import sys
 
 from tango import AttrWriteType, DevState
 from tango.server import attribute, run
@@ -20,7 +21,7 @@ from ska_sdp_lmc.subarray_config import SubarrayConfig
 from ska_sdp_lmc.subarray_validation import (
     validate_assign_resources, validate_configure, validate_scan
 )
-from ska_sdp_lmc.util import terminate
+from ska_sdp_lmc.util import terminate, check_args
 
 LOG = get_logger()
 
@@ -86,7 +87,7 @@ class SDPSubarray(SDPDevice):
 
     def init_device(self):
         """Initialise the device."""
-        init_logger(device_name=self.get_name())
+        init_logger(self)
 
         LOG.info('SDP Subarray initialising')
         super().init_device()
@@ -595,4 +596,4 @@ def main(args=None, **kwargs):
 
 
 if __name__ == '__main__':
-    main()
+    main(check_args(SDPSubarray, sys.argv))

@@ -8,7 +8,7 @@ from pytest_bdd import (given, parsers, scenarios, then, when)
 
 import tango
 
-from ska_sdp_lmc import HealthState, tango_logging, devices_config
+from ska_sdp_lmc import HealthState, tango_logging, devices_config, base
 from . import test_logging
 
 DEVICE_NAME = 'test_sdp/elt/master'
@@ -101,8 +101,10 @@ def command(master_device, command):
     command_func = getattr(master_device, command)
     # Call the command
     command_func('{}')
-    # Update the device attributes
-    master_device.update_attributes()
+
+    if not base.FEATURE_EVENT_LOOP.is_active():
+        # Update the device attributes
+        master_device.update_attributes()
 
 
 # ----------

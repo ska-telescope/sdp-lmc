@@ -18,7 +18,7 @@ from pytest_bdd import (given, parsers, scenarios, then, when)
 import ska_sdp_config
 from . import test_logging
 from ska_sdp_lmc import (AdminMode, HealthState, ObsState,
-                         devices_config, tango_logging)
+                         devices_config, tango_logging, base)
 
 CONFIG_DB_CLIENT = devices_config.new_config_db_client()
 SUBARRAY_ID = '01'
@@ -142,8 +142,9 @@ def call_command(subarray_device, command):
         # workflow, which would be done by the PC and workflows
         create_pb_states()
 
-    # Update the device attributes
-    subarray_device.update_attributes()
+    if not base.FEATURE_EVENT_LOOP.is_active():
+        # Update the device attributes
+        subarray_device.update_attributes()
 
 
 # -----------------------------------------------------------------------------

@@ -10,7 +10,7 @@ import os
 import json
 import tango
 
-from ska_telmodel.sdp.schema import validate_sdp_receive_addresses
+from ska_telmodel.sdp.schema import get_sdp_receive_addresses_schema
 
 import pytest
 from pytest_bdd import (given, parsers, scenarios, then, when)
@@ -292,7 +292,7 @@ def receive_addresses_expected(subarray_device):
     receive_addresses_expected = read_receive_addresses()
     receive_addresses = json.loads(subarray_device.receiveAddresses)
     assert receive_addresses == receive_addresses_expected
-    validate_sdp_receive_addresses(3, receive_addresses, 2)
+    get_sdp_receive_addresses_schema(3, True).validate(receive_addresses)
 
 
 @then('receiveAddresses should be an empty JSON object')

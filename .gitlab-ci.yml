@@ -64,6 +64,7 @@ etcd_test:
     - name: quay.io/coreos/etcd:latest
       alias: etcd
   variables:
+    SDP_CONFIG_HOST: etcd
     FEATURE_EVENT_LOOP: 1
     FEATURE_CONFIG_DB: 1
   before_script:

@@ -36,13 +36,20 @@ def command_transaction(argdesc: Optional[str] = None):
         @functools.wraps(command_method)
         def wrapper(self, params_json='{}'):
             name = command_method.__name__
+            logging.info('command %s', name)
             params = json.loads(params_json)
+
+            def do_command():
+                if argdesc:
+                    result = command_method(self, txn_id, params_json)
+                else:
+                    result = command_method(self, txn_id)
+                return ret
+
             with transaction(name, params, logger=LOG) as txn_id:
                 with log_transaction_id(txn_id):
-                    if argdesc:
-                        ret = command_method(self, txn_id, params_json)
-                    else:
-                        ret = command_method(self, txn_id)
+                    ret = self._event_loop.do(do_command())
+
             return ret
 
         # Use the Tango command function to create the command.

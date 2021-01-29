@@ -203,7 +203,7 @@ def configure(device: Any, device_name: str = None,
         handlers.append(TangoLoggingServiceHandler(device.get_logger()))
     else:
         cls = type(device)
-        log.info('Device %s is not a tango server device: %s', cls, cls.mro())
+        log.debug('Device %s is not a tango server device: %s', cls, cls.mro())
 
     tango_filter = TangoFilter()
     for handler in handlers:

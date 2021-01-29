@@ -66,9 +66,10 @@ class SDPMaster(SDPDevice):
         for txn in self._config.txn():
             master = self._config.master(txn)
             master.create_if_not_present(DevState.STANDBY)
+            LOG.info('create: %s', txn.get_master())
 
         # Start event loop
-        self._start_event_loop()
+        self._event_loop.start()
 
         LOG.info('SDP Master initialised')
 
@@ -180,9 +181,22 @@ class SDPMaster(SDPDevice):
         :param txn: configuration transaction
 
         """
+        LOG.info('deleting: %s', self._deleting)
+        if self._deleting:
+            return
         master = self._config.master(txn)
+        LOG.info('from config %s', txn.get_master())
         with log_transaction_id(master.transaction_id):
-            self._set_state(master.state)
+            #self._set_state(master.state)
+            state = master.state
+            LOG.info('state %s -> %s', self.get_state(), state)
+            if state is None:
+                state = self.get_state()
+            self._set_state(state)
+            #if state is None:
+            #    LOG.info('master state is None')
+            #else:
+            #    self._set_state(state)
 
     # -------------------------
     # Attribute-setting methods

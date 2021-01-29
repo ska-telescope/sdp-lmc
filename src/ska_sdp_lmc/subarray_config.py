@@ -74,7 +74,7 @@ class SubarrayState:
             }
             self._txn.create_subarray(self._id, subarray)
 
-    def _get(self, name: str) -> Any:
+    def _get(self, name: str) -> Optional[Any]:
         """
         Get item from subarray entry.
 
@@ -83,7 +83,7 @@ class SubarrayState:
 
         """
         subarray = self._txn.get_subarray(self._id)
-        return subarray.get(name)
+        return None if subarray is None else subarray.get(name)
 
     def _set(self, name: str, value: Any):
         """

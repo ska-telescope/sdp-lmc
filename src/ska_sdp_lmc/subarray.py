@@ -122,7 +122,7 @@ class SDPSubarray(SDPDevice):
             subarray.create_if_not_present(DevState.OFF, ObsState.EMPTY)
 
         # Start event loop
-        self._start_event_loop()
+        self._event_loop.start()
 
         LOG.info('SDP Subarray initialised')
 
@@ -549,6 +549,8 @@ class SDPSubarray(SDPDevice):
 
         """
         subarray = self._config.subarray(txn)
+        if subarray is None:
+            return
 
         with log_transaction_id(subarray.transaction_id):
             self._set_state(subarray.state)

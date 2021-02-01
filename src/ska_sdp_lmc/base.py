@@ -9,11 +9,9 @@ from tango.server import Device, attribute
 from ska_sdp_config.config import Transaction
 from . import release
 from .event_loop import new_event_loop
-from .feature_toggle import FeatureToggle
 from .exceptions import raise_command_not_allowed
 
 LOG = logging.getLogger('ska_sdp_lmc')
-FEATURE_EVENT_LOOP = FeatureToggle('event_loop', True)
 
 
 class SDPDevice(Device):

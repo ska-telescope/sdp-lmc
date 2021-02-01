@@ -44,11 +44,11 @@ def command_transaction(argdesc: Optional[str] = None):
                     result = command_method(self, txn_id, params_json)
                 else:
                     result = command_method(self, txn_id)
-                return ret
+                return result
 
             with transaction(name, params, logger=LOG) as txn_id:
                 with log_transaction_id(txn_id):
-                    ret = self._event_loop.do(do_command())
+                    ret = self._event_loop.do(do_command)
 
             return ret
 

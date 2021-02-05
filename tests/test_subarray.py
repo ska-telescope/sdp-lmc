@@ -91,8 +91,9 @@ def set_subarray_device_state(subarray_device, state: str):
     # Set the device state in the config DB
     set_state_and_obs_state(state, 'EMPTY')
 
-    # Update device attributes
-    subarray_device.update_attributes()
+    if not event_loop.FEATURE_EVENT_LOOP.is_active():
+        # Update device attributes
+        subarray_device.update_attributes()
 
     # Check that state has been set correctly
     assert subarray_device.state() == tango.DevState.names[state]
@@ -112,8 +113,9 @@ def set_subarray_device_obstate(subarray_device, initial_obs_state: str):
     # Set the obsState in the config DB
     set_state_and_obs_state('ON', initial_obs_state)
 
-    # Update the device attributes
-    subarray_device.update_attributes()
+    if not event_loop.FEATURE_EVENT_LOOP.is_active():
+        # Update the device attributes
+        subarray_device.update_attributes()
 
     # Check obsState has been set correctly
     assert subarray_device.ObsState == ObsState[initial_obs_state]

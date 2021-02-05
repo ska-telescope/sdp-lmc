@@ -2,6 +2,7 @@
 
 import signal
 import sys
+import threading
 
 from tango import AttrWriteType, DevState
 from tango.server import attribute, run
@@ -67,6 +68,8 @@ class SDPMaster(SDPDevice):
             master = self._config.master(txn)
             master.create_if_not_present(DevState.STANDBY)
             LOG.info('create: %s', txn.get_master())
+
+        LOG.info('live threads %s', threading.enumerate())
 
         # Start event loop
         self._event_loop.start()
@@ -187,16 +190,10 @@ class SDPMaster(SDPDevice):
         master = self._config.master(txn)
         LOG.info('from config %s', txn.get_master())
         with log_transaction_id(master.transaction_id):
-            #self._set_state(master.state)
             state = master.state
             LOG.info('state %s -> %s', self.get_state(), state)
-            if state is None:
-                state = self.get_state()
             self._set_state(state)
-            #if state is None:
-            #    LOG.info('master state is None')
-            #else:
-            #    self._set_state(state)
+        print('finished from config')
 
     # -------------------------
     # Attribute-setting methods

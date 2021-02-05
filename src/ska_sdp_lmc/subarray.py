@@ -403,7 +403,7 @@ class SDPSubarray(SDPDevice):
         self._command_allowed_state(command_name, [DevState.ON])
         self._command_allowed_obs_state(
             command_name,
-            [ObsState.IDLE, ObsState.CONFIGURING, ObsState.READY,
+            [ObsState.IDLE, ObsState.CONFIGURING, Obs,
              ObsState.SCANNING, ObsState.RESETTING]
         )
         return True
@@ -549,26 +549,27 @@ class SDPSubarray(SDPDevice):
 
         """
         subarray = self._config.subarray(txn)
-        if subarray is None:
-            return
 
         with log_transaction_id(subarray.transaction_id):
-            self._set_state(subarray.state)
-            self._set_receive_addresses(subarray.receive_addresses)
-            self._set_scan_type(
-                subarray.scan_type if subarray.scan_type else 'null'
-            )
-            self._set_scan_id(subarray.scan_id if subarray.scan_id else 0)
+            state = subarray.state
+            LOG.info('state %s -> %s', self.get_state(), state)
+            if state is not None:
+                self._set_state(state)
+                self._set_receive_addresses(subarray.receive_addresses)
+                self._set_scan_type(
+                    subarray.scan_type if subarray.scan_type else 'null'
+                )
+                self._set_scan_id(subarray.scan_id if subarray.scan_id else 0)
 
-            if subarray.obs_state_target == ObsState.IDLE and \
-                    subarray.command == 'AssignResources':
-                if subarray.receive_addresses is None:
-                    obs_state = ObsState.RESOURCING
+                if subarray.obs_state_target == ObsState.IDLE and \
+                        subarray.command == 'AssignResources':
+                    if subarray.receive_addresses is None:
+                        obs_state = ObsState.RESOURCING
+                    else:
+                        obs_state = ObsState.IDLE
                 else:
-                    obs_state = ObsState.IDLE
-            else:
-                obs_state = subarray.obs_state_target
-            self._set_obs_state(obs_state)
+                    obs_state = subarray.obs_state_target
+                self._set_obs_state(obs_state)
 
     # ---------------
     # Utility methods

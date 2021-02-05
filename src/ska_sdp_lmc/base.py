@@ -2,6 +2,7 @@
 
 import enum
 import logging
+import traceback
 
 from tango import AttrWriteType
 from tango.server import Device, attribute
@@ -51,9 +52,7 @@ class SDPDevice(Device):
         self._deleting = True
         LOG.info('Deleting %s device: %s', self._get_device_name().lower(),
                  self.get_name())
-        LOG.info('Waiting for event thread to terminate')
         self._event_loop.join()
-        LOG.info('Event thread stopped')
 
     def always_executed_hook(self):
         """Run for on each call."""
@@ -87,6 +86,13 @@ class SDPDevice(Device):
         LOG.info('Updating attributes')
         self.set_attributes(loop=False)
 
+    def _do_transaction(self):
+        for txn in self._config.txn():
+            logging.info('Call set from config')
+            with self._event_loop.condition:
+                self._set_from_config(txn)
+                self._event_loop.notify()
+
     def set_attributes(self, loop: bool = True) -> None:
         """Set attributes based on configuration.
 
@@ -96,15 +102,11 @@ class SDPDevice(Device):
         :param loop: watch for changes to configuration and loop
 
         """
-        for txn in self._config.txn():
-            self._set_from_config(txn)
-            logging.info('Notify waiting threads')
-            self._event_loop.notify()
-            logging.info('Notified waiting threads')
-
-            if loop and not self._deleting:
-                # Loop the transaction when the config entries are changed
-                txn.loop(wait=True)
+        if loop and not self._deleting:
+            for watcher in self._config.watcher():
+                self._do_transaction()
+        else:
+            self._do_transaction()
 
     def _set_from_config(self, txn: Transaction) -> None:
         """Subclasses override this to set their state."""

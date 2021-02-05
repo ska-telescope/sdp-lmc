@@ -76,10 +76,10 @@ def set_device_state(master_device, initial_state):
 
     """
     # Set the device state in the config DB
+    print(f'set device state to {initial_state}')
     set_state(initial_state)
-
-    # Update device attributes
     master_device.update_attributes()
+    print('done')
 
     # Check that state has been set correctly
     assert master_device.state() == tango.DevState.names[initial_state]
@@ -95,6 +95,7 @@ def command(master_device, command):
 
     """
     # Check command is present
+    print(f'call command {command}')
     command_list = master_device.get_command_list()
     assert command in command_list
     # Get command function

@@ -86,8 +86,8 @@ class SDPDevice(Device):
         LOG.info('Updating attributes')
         self.set_attributes(loop=False)
 
-    def _do_transaction(self):
-        for txn in self._config.txn():
+    def _do_transaction(self, txn_wrapper):
+        for txn in txn_wrapper.txn():
             logging.info('Call set from config')
             with self._event_loop.condition:
                 self._set_from_config(txn)
@@ -104,9 +104,10 @@ class SDPDevice(Device):
         """
         if loop and not self._deleting:
             for watcher in self._config.watcher():
-                self._do_transaction()
+                logging.info('Watching config')
+                self._do_transaction(watcher)
         else:
-            self._do_transaction()
+            self._do_transaction(self._config)
 
     def _set_from_config(self, txn: Transaction) -> None:
         """Subclasses override this to set their state."""

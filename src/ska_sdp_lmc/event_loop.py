@@ -1,6 +1,7 @@
 """Event loop support"""
 import logging
 import threading
+from time import sleep
 from typing import Callable, Any, Optional
 
 from tango import EnsureOmniThread
@@ -10,6 +11,8 @@ from .feature_toggle import FeatureToggle
 
 LOG = logging.getLogger('ska_sdp_lmc')
 FEATURE_EVENT_LOOP = FeatureToggle('event_loop', True)
+
+# *** This needs some cleanup to remove any useless stuff.
 
 
 def new_event_loop(device):
@@ -61,7 +64,7 @@ class _FakeThread:
         """Does nothing."""
 
     @staticmethod
-    def do(f: Callable, *args, **kwargs) -> Any:
+    def do(f: Callable, name: str, *args, **kwargs) -> Any:
         return f(*args, **kwargs)
 
 
@@ -103,13 +106,14 @@ class _RealThread(threading.Thread):
         super().join(timeout)
         LOG.info('Event thread stopped')
 
-    def do(self, f: Callable, *args, **kwargs) -> Any:
-        LOG.info('Call %s', f.__name__)
+    def do(self, f: Callable, name: str, *args, **kwargs) -> Any:
+        LOG.info('Call %s', name)
         with self.condition:
-            LOG.info('Execute %s', f.__name__)
+            LOG.info('Execute %s', name)
             ret = f(*args, **kwargs)
             LOG.info('Waiting for update')
-            self.condition.wait()
+            sleep(2)
+            #self.condition.wait()
         LOG.info('Update received')
         return ret
 

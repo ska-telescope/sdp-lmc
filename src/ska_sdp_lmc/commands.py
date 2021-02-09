@@ -46,10 +46,13 @@ def command_transaction(argdesc: Optional[str] = None):
                     result = command_method(self, txn_id)
                 return result
 
+            # The idea here is to execute the command with a lock that will then
+            # wait for notification from the event loop. Note that command
+            # execution is actually in the main thread.
+            # FIXME: only commands that write to the db should lock.
             with transaction(name, params, logger=LOG) as txn_id:
                 with log_transaction_id(txn_id):
-                    #ret = do_command()
-                    ret = self._event_loop.do(do_command)
+                    ret = self._event_loop.do(do_command, name)
 
             return ret
 

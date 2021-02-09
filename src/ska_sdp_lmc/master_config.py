@@ -74,6 +74,7 @@ class MasterState:
         :param value: the value to set
 
         """
+        print(f'*** set {name} to {value}')
         master = self._txn.get_master()
         master[name] = value
         self._txn.update_master(master)

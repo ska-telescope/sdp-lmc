@@ -1,5 +1,5 @@
 """Master device configuration interface."""
-
+import logging
 from typing import Any, Optional
 
 from tango import DevState
@@ -63,7 +63,10 @@ class MasterState:
         :returns: the value of the item, or None if not present
 
         """
+        logging.info(f'get {name}')
+        logging.info(f'get {name} txn {self._txn}')
         master = self._txn.get_master()
+        logging.info(f'master {master}')
         return None if master is None else master.get(name)
 
     def _set(self, name: str, value: Any):
@@ -78,6 +81,7 @@ class MasterState:
         master = self._txn.get_master()
         master[name] = value
         self._txn.update_master(master)
+        print(f'*** state now {self.state}')
 
     @property
     def state(self) -> Optional[DevState]:

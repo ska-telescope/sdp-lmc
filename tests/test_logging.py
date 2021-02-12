@@ -18,7 +18,7 @@ class ListHandler(logging.Handler):
         self.list.append(self.format(record))
 
     def get_last(self) -> str:
-        return self.list[-1]
+        return self.list[-1] if self.list else '||||||'
 
     def get_last_tag(self) -> str:
         return self.get_last().split('|')[6]

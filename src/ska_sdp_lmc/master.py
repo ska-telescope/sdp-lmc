@@ -59,6 +59,7 @@ class SDPMaster(SDPDevice):
 
         # Set attributes not updated by event loop
         self._set_health_state(HealthState.OK)
+        self._set_state(DevState.STANDBY)
 
         # Get connection to the config DB
         self._config = MasterConfig()
@@ -70,11 +71,10 @@ class SDPMaster(SDPDevice):
             LOG.info('create: %s', txn.get_master())
 
         LOG.info('live threads %s', threading.enumerate())
+        LOG.info('SDP Master initialised')
 
         # Start event loop
         self._event_loop.start()
-
-        LOG.info('SDP Master initialised')
 
     # -----------------
     # Attribute methods
@@ -184,11 +184,10 @@ class SDPMaster(SDPDevice):
         :param txn: configuration transaction
 
         """
-        LOG.info('deleting: %s', self._deleting)
-        if self._deleting:
-            return
+        LOG.info('get master state txn %s', txn)
         master = self._config.master(txn)
-        LOG.info('from config %s', txn.get_master())
+        LOG.info('created master object')
+        LOG.info('from config %s', master.state)
         with log_transaction_id(master.transaction_id):
             state = master.state
             LOG.info('state %s -> %s', self.get_state(), state)

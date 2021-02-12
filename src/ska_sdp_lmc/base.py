@@ -46,12 +46,17 @@ class SDPDevice(Device):
         self._version = release.VERSION
         self._event_loop = new_event_loop(self)
         self._deleting = False
+        self._watcher = None
 
     def delete_device(self):
         """Device destructor."""
-        self._deleting = True
         LOG.info('Deleting %s device: %s', self._get_device_name().lower(),
                  self.get_name())
+        self._deleting = True
+        if self._watcher is not None:
+            LOG.info('trigger watcher loop')
+            self._watcher.trigger()
+            self._watcher = None
         self._event_loop.join()
 
     def always_executed_hook(self):
@@ -71,7 +76,7 @@ class SDPDevice(Device):
 
     def _set_state(self, value):
         """Set device state."""
-        if self.get_state() != value:
+        if value is not None and self.get_state() != value:
             LOG.info('Setting device state to %s', value.name)
             self.set_state(value)
             self.push_change_event('State', self.get_state())
@@ -88,8 +93,9 @@ class SDPDevice(Device):
 
     def _do_transaction(self, txn_wrapper):
         for txn in txn_wrapper.txn():
-            logging.info('Call set from config')
+            LOG.info('txn is %s', txn)
             with self._event_loop.condition:
+                LOG.info('call set from config')
                 self._set_from_config(txn)
                 self._event_loop.notify()
 
@@ -102,12 +108,22 @@ class SDPDevice(Device):
         :param loop: watch for changes to configuration and loop
 
         """
-        if loop and not self._deleting:
-            for watcher in self._config.watcher():
-                logging.info('Watching config')
-                self._do_transaction(watcher)
+        LOG.info('deleting: %s loop: %s', self._deleting, loop)
+        if loop:
+            try:
+                for watcher in self._config.watcher():
+                    LOG.info('watcher is %s', type(watcher))
+                    if self._deleting:
+                        break
+                    self._watcher = watcher
+                    self._do_transaction(watcher)
+            finally:
+                self._watcher = None
+            LOG.info('Exit watcher loop')
         else:
+            LOG.info('set attributes without watch')
             self._do_transaction(self._config)
+        LOG.info('Exit set attributes')
 
     def _set_from_config(self, txn: Transaction) -> None:
         """Subclasses override this to set their state."""

@@ -1,6 +1,7 @@
 """Config DB related tasks for SDP devices."""
 
 import logging
+import threading
 
 import ska_sdp_config
 from .feature_toggle import FeatureToggle
@@ -17,6 +18,26 @@ def new_config_db_client():
     return config_db_client
 
 
+class ThreadsafeIter:
+    """Takes an iterator/generator and makes it thread-safe by
+    serializing call to the `next` method of given iterator/generator.
+    """
+    def __init__(self, it):
+        self.it = it
+        self.lock = threading.Lock()
+
+    def __iter__(self):
+        return self
+
+    def __next__(self):
+        with self.lock:
+            return next(self.it)
+
+    def close(self):
+        with self.lock:
+            self.it.close()
+
+
 class BaseConfig:
     """
     Base configuration interface.
@@ -24,6 +45,7 @@ class BaseConfig:
 
     def __init__(self):
         self._client = new_config_db_client()
+        self._watcher = None
 
     def txn(self):
         """
@@ -42,3 +64,9 @@ class BaseConfig:
 
         """
         return self._client.watcher()
+        #self._watcher = ThreadsafeIter(self._client.watcher())
+        #return self._watcher
+
+    def stop_watcher(self):
+        if self._watcher is not None:
+            self._watcher.close()

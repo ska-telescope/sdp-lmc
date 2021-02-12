@@ -1,4 +1,5 @@
 """Event loop support"""
+import contextlib
 import logging
 import threading
 from time import sleep
@@ -33,17 +34,10 @@ def _add_command(device):
     device.add_command(cmd, True)
 
 
-class _FakeCondition:
-    def __enter__(self):
-        """Does nothing."""
-    def __exit__(self):
-        """Does nothing."""
-
-
 class _FakeThread:
     def __init__(self, device):
         _add_command(device)
-        self.condition = _FakeCondition()
+        self.condition = contextlib.nullcontext()
 
     def start(self):
         """Does nothing."""
@@ -97,8 +91,8 @@ class _RealThread(threading.Thread):
 
     def notify(self) -> None:
         logging.info('Notify waiting threads')
-        with self.condition:
-            self.condition.notify_all()
+        #with self.condition:
+        self.condition.notify_all()
         logging.info('Notified waiting threads')
 
     def join(self, timeout: Optional[float] = None) -> None:
@@ -107,13 +101,15 @@ class _RealThread(threading.Thread):
         LOG.info('Event thread stopped')
 
     def do(self, f: Callable, name: str, *args, **kwargs) -> Any:
+        # Execute command with a condition lock and wait for
+        # notification from the event thread.
         LOG.info('Call %s', name)
         with self.condition:
             LOG.info('Execute %s', name)
             ret = f(*args, **kwargs)
             LOG.info('Waiting for update')
-            sleep(2)
-            #self.condition.wait()
+            self.condition.wait()
+        #sleep(5)
         LOG.info('Update received')
         return ret
 

@@ -46,8 +46,9 @@ def master_device(devices):
     tango_logging.configure(device, device_name=DEVICE_NAME, handlers=[LOG_LIST])
     tango_logging.set_level(tango.LogLevel.LOG_DEBUG)
 
-    # Update the device attributes
-    device.update_attributes()
+    if not event_loop.FEATURE_EVENT_LOOP.is_active():
+        # Update the device attributes
+        device.update_attributes()
 
     return device
 
@@ -78,8 +79,9 @@ def set_device_state(master_device, initial_state):
     # Set the device state in the config DB
     print(f'set device state to {initial_state}')
     set_state(initial_state)
-    master_device.update_attributes()
-    print('done')
+    if not event_loop.FEATURE_EVENT_LOOP.is_active():
+        master_device.update_attributes()
+        print('done')
 
     # Check that state has been set correctly
     assert master_device.state() == tango.DevState.names[initial_state]

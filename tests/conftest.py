@@ -10,7 +10,7 @@ from ska_sdp_lmc import SDPMaster, SDPSubarray, event_loop, devices_config, tang
 
 # Use the config DB memory backend in the devices. This will be overridden if
 # the FEATURE_CONFIG_DB environment variable is set to 1.
-devices_config.FEATURE_CONFIG_DB.set_default(False)
+devices_config.FEATURE_CONFIG_DB.set_default(True)
 # Disable the event loop in the devices. This will be overridden if the
 # FEATURE_EVENT_LOOP environment variable is set to 1.
 event_loop.FEATURE_EVENT_LOOP.set_default(True)

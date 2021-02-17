@@ -2,6 +2,7 @@
 
 # pylint: disable=redefined-outer-name
 # pylint: disable=duplicate-code
+import logging
 
 import pytest
 from pytest_bdd import (given, parsers, scenarios, then, when)
@@ -35,20 +36,22 @@ def master_device(devices):
     """
     device = devices.get_device(DEVICE_NAME)
 
+    # Configure logging to be captured
+    LOG_LIST.list.clear()
+    tango_logging.configure(device, device_name=DEVICE_NAME, handlers=[LOG_LIST])
+    tango_logging.set_level(tango.LogLevel.LOG_DEBUG)
+
+    if hasattr(device, 'stop_event_loop'):
+        device.stop_event_loop()
+
     # Wipe the config DB
     wipe_config_db()
 
     # Initialise the device
     device.Init()
 
-    # Configure logging to be captured
-    LOG_LIST.list.clear()
-    tango_logging.configure(device, device_name=DEVICE_NAME, handlers=[LOG_LIST])
-    tango_logging.set_level(tango.LogLevel.LOG_DEBUG)
-
-    if not event_loop.FEATURE_EVENT_LOOP.is_active():
-        # Update the device attributes
-        device.update_attributes()
+    # Update the device attributes
+    update_attributes(device)
 
     return device
 
@@ -77,11 +80,15 @@ def set_device_state(master_device, initial_state):
 
     """
     # Set the device state in the config DB
-    print(f'set device state to {initial_state}')
+    logging.info(f'set device state to {initial_state}')
+    logging.info(f'device {type(master_device)}')
+    master_device.acquire()
     set_state(initial_state)
-    if not event_loop.FEATURE_EVENT_LOOP.is_active():
-        master_device.update_attributes()
-        print('done')
+    master_device.release()
+
+    # Update the device attributes
+    update_attributes(master_device)
+    logging.info('done, state is %s', master_device.state())
 
     # Check that state has been set correctly
     assert master_device.state() == tango.DevState.names[initial_state]
@@ -97,7 +104,7 @@ def command(master_device, command):
 
     """
     # Check command is present
-    print(f'call command {command}')
+    logging.info(f'call command {command}')
     command_list = master_device.get_command_list()
     assert command in command_list
     # Get command function
@@ -105,9 +112,8 @@ def command(master_device, command):
     # Call the command
     command_func('{}')
 
-    if not event_loop.FEATURE_EVENT_LOOP.is_active():
-        # Update the device attributes
-        master_device.update_attributes()
+    # Update the device attributes
+    update_attributes(master_device)
 
 
 # ----------
@@ -171,8 +177,10 @@ def log_contains_transaction_id():
 
 def wipe_config_db():
     """Remove all entries in the config DB."""
+    logging.info('wipe config db')
     CONFIG_DB_CLIENT.backend.delete('/master', must_exist=False, recursive=True)
     tango_logging.set_transaction_id('')
+    logging.info('done wipe')
 
 
 def set_state(state):
@@ -183,6 +191,7 @@ def set_state(state):
     """
     # Check state is a valid value
     assert state in tango.DevState.names
+    logging.info('test set state to %s', state)
 
     master = {
         'transaction_id': None,
@@ -191,3 +200,14 @@ def set_state(state):
 
     for txn in CONFIG_DB_CLIENT.txn():
         txn.update_master(master)
+    logging.info('test done set state')
+
+
+def update_attributes(device, wait=True):
+    if wait and event_loop.FEATURE_EVENT_LOOP.is_active():
+        device.wait_for_event()
+    else:
+        device.update_attributes()
+    logging.info('Update attributes done')
+
+

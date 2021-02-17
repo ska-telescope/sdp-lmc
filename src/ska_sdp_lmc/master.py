@@ -72,9 +72,7 @@ class SDPMaster(SDPDevice):
 
         LOG.info('live threads %s', threading.enumerate())
         LOG.info('SDP Master initialised')
-
-        # Start event loop
-        self._event_loop.start()
+        self._start_event_loop()
 
     # -----------------
     # Attribute methods
@@ -187,12 +185,11 @@ class SDPMaster(SDPDevice):
         LOG.info('get master state txn %s', txn)
         master = self._config.master(txn)
         LOG.info('created master object')
-        LOG.info('from config %s', master.state)
         with log_transaction_id(master.transaction_id):
             state = master.state
             LOG.info('state %s -> %s', self.get_state(), state)
             self._set_state(state)
-        print('finished from config')
+        LOG.info('finished from config')
 
     # -------------------------
     # Attribute-setting methods

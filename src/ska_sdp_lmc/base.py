@@ -1,11 +1,12 @@
 """SDP Tango device base class module."""
-
+import contextlib
 import enum
 import logging
+import threading
 import traceback
 
 from tango import AttrWriteType
-from tango.server import Device, attribute
+from tango.server import Device, attribute, command
 
 from ska_sdp_config.config import Transaction
 from . import release
@@ -44,20 +45,15 @@ class SDPDevice(Device):
 
         # Initialise private values of attributes
         self._version = release.VERSION
-        self._event_loop = new_event_loop(self)
         self._deleting = False
         self._watcher = None
+        self._event_loop = None
 
     def delete_device(self):
         """Device destructor."""
         LOG.info('Deleting %s device: %s', self._get_device_name().lower(),
                  self.get_name())
-        self._deleting = True
-        if self._watcher is not None:
-            LOG.info('trigger watcher loop')
-            self._watcher.trigger()
-            self._watcher = None
-        self._event_loop.join()
+        self.stop_event_loop()
 
     def always_executed_hook(self):
         """Run for on each call."""
@@ -73,6 +69,45 @@ class SDPDevice(Device):
     # ---------------
     # Private methods
     # ---------------
+
+    def _start_event_loop(self):
+        # Only start the event loop from the main thread. This stops it starting
+        # when the tango device test context is created.
+        if (self._event_loop is None and
+                threading.current_thread() == threading.main_thread()):
+            self._event_loop = new_event_loop(self)
+            self._event_loop.start()
+
+    def stop_event_loop(self):
+        with self.hold_lock():
+            self._deleting = True
+            if self._watcher is not None:
+                LOG.info('trigger watcher loop')
+                self._watcher.trigger()
+                self._watcher = None
+
+            if self._event_loop is not None:
+                self._event_loop.join()
+                self._event_loop = None
+
+    def hold_lock(self) -> contextlib.AbstractContextManager:
+        return (self._event_loop.condition if self._event_loop is not None
+                else contextlib.nullcontext())
+
+    def acquire(self) -> None:
+        LOG.info('acquire lock on condition %s', self._event_loop.condition)
+        self._event_loop.condition.acquire()
+
+    def release(self) -> None:
+        LOG.info('release lock on condition %s', self._event_loop.condition)
+        self._event_loop.condition.release()
+
+    def wait_for_event(self) -> None:
+        LOG.info('wait for event thread')
+        for handler in LOG.handlers:
+            handler.flush()
+        if self._event_loop is not None:
+            self._event_loop.wait()
 
     def _set_state(self, value):
         """Set device state."""
@@ -94,10 +129,12 @@ class SDPDevice(Device):
     def _do_transaction(self, txn_wrapper):
         for txn in txn_wrapper.txn():
             LOG.info('txn is %s', txn)
-            with self._event_loop.condition:
+            with self.hold_lock():
                 LOG.info('call set from config')
                 self._set_from_config(txn)
+                LOG.info('return from set from config')
                 self._event_loop.notify()
+        LOG.info('transaction done')
 
     def set_attributes(self, loop: bool = True) -> None:
         """Set attributes based on configuration.
@@ -117,6 +154,8 @@ class SDPDevice(Device):
                         break
                     self._watcher = watcher
                     self._do_transaction(watcher)
+            except Exception as e:
+                LOG.warning('Exception: %s', e)
             finally:
                 self._watcher = None
             LOG.info('Exit watcher loop')

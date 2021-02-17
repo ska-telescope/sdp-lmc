@@ -29,14 +29,17 @@ def new_event_loop(device):
     return _RealThread(device) if FEATURE_EVENT_LOOP.is_active() else _FakeThread(device)
 
 
-def _add_command(device):
-    cmd = command(f=device.update_attributes)
-    device.add_command(cmd, True)
+def _add_commands(device):
+    for f in (device.update_attributes, device.wait_for_event,
+              device.acquire, device.release, device.stop_event_loop):
+        cmd = command(f=f)
+        LOG.info('add command %s', f.__name__)
+        device.add_command(cmd, True)
 
 
 class _FakeThread:
     def __init__(self, device):
-        _add_command(device)
+        _add_commands(device)
         self.condition = contextlib.nullcontext()
 
     def start(self):
@@ -66,12 +69,12 @@ class _RealThread(threading.Thread):
     def __init__(self, device):
         super().__init__(target=self._event_loop, name='EventLoop', daemon=True)
         self.device = device
-        _add_command(device)
+        _add_commands(device)
         self.condition = threading.Condition()
 
     def _event_loop(self):
         """Event loop to update attributes automatically."""
-        LOG.info('Starting event loop')
+        LOG.info('Starting event loop, name=%s', self.name)
         # Use EnsureOmniThread to make it thread-safe under Tango
         with EnsureOmniThread():
             self.device.set_attributes()
@@ -79,7 +82,7 @@ class _RealThread(threading.Thread):
     def wait(self) -> None:
         LOG.info('Wait called')
         with self.condition:
-            LOG.info('Waiting')
+            LOG.info('Waiting for event')
             self.condition.wait()
             LOG.info('Done waiting')
 
@@ -91,8 +94,8 @@ class _RealThread(threading.Thread):
 
     def notify(self) -> None:
         logging.info('Notify waiting threads')
-        #with self.condition:
-        self.condition.notify_all()
+        with self.condition:
+            self.condition.notify_all()
         logging.info('Notified waiting threads')
 
     def join(self, timeout: Optional[float] = None) -> None:

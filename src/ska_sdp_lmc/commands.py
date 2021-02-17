@@ -36,14 +36,21 @@ def command_transaction(argdesc: Optional[str] = None):
         @functools.wraps(command_method)
         def wrapper(self, params_json='{}'):
             name = command_method.__name__
-            logging.info('command %s', name)
+            LOG.info('command %s', name)
             params = json.loads(params_json)
 
             def do_command():
+                self._in_command = True
+                LOG.info('in command')
                 if argdesc:
                     result = command_method(self, txn_id, params_json)
                 else:
                     result = command_method(self, txn_id)
+                self._in_command = False
+                LOG.info('done command')
+                LOG.info('%s push commands in queue', len(self._push_queue))
+                for f in self._push_queue:
+                    f()
                 return result
 
             # The idea here is to execute the command with a lock that will then

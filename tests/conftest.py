@@ -25,13 +25,13 @@ device_info = [
         'devices': [
             {'name': 'test_sdp/elt/master'}
         ]
-    }#,
-    #{
-    #    'class': SDPSubarray,
-    #    'devices': [
-    #        {'name': 'test_sdp/elt/subarray_1'}
-    #    ]
-    #}
+    },
+    {
+        'class': SDPSubarray,
+        'devices': [
+            {'name': 'test_sdp/elt/subarray_1'}
+        ]
+    }
 ]
 
 

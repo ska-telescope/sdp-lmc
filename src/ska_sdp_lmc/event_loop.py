@@ -80,7 +80,6 @@ class _RealThread(threading.Thread):
             self.device.set_attributes()
 
     def wait(self) -> None:
-        LOG.info('Wait called')
         with self.condition:
             LOG.info('Waiting for event')
             self.condition.wait()

@@ -1,9 +1,12 @@
 """SDP Tango device base class module."""
+import collections
 import contextlib
 import enum
 import logging
+import sys
 import threading
 import traceback
+from typing import Any, Callable
 
 from tango import AttrWriteType
 from tango.server import Device, attribute, command
@@ -48,6 +51,8 @@ class SDPDevice(Device):
         self._deleting = False
         self._watcher = None
         self._event_loop = None
+        self._in_command = False
+        self.push_queue = collections.deque()
 
     def delete_device(self):
         """Device destructor."""
@@ -96,11 +101,11 @@ class SDPDevice(Device):
 
     def acquire(self) -> None:
         LOG.info('acquire lock on condition %s', self._event_loop.condition)
-        self._event_loop.condition.acquire()
+        self._event_loop.acquire()
 
     def release(self) -> None:
         LOG.info('release lock on condition %s', self._event_loop.condition)
-        self._event_loop.condition.release()
+        self._event_loop.release()
 
     def wait_for_event(self) -> None:
         LOG.info('wait for event thread')
@@ -109,12 +114,24 @@ class SDPDevice(Device):
         if self._event_loop is not None:
             self._event_loop.wait()
 
+    def _set_attribute(self, name: str, value: Any, getter: Callable, setter: Callable):
+        current = getter()
+        if value != current:
+            LOG.info('Setting %s from %s to %s, in command %s',
+                     name, current, value, self._in_command)
+            setter(value)
+
+            # Push change events require a Tango lock and will fail from the event
+            # thread if the main thread is running a command, so defer them.
+            def f(): self.push_change_event(name, getter())
+            if self._in_command:
+                self.push_queue.append(f)
+            else:
+                f()
+
     def _set_state(self, value):
         """Set device state."""
-        if value is not None and self.get_state() != value:
-            LOG.info('Setting device state to %s', value.name)
-            self.set_state(value)
-            self.push_change_event('State', self.get_state())
+        self._set_attribute('State', value, self.get_state, self.set_state)
 
     @classmethod
     def _get_device_name(cls):
@@ -156,6 +173,7 @@ class SDPDevice(Device):
                     self._do_transaction(watcher)
             except Exception as e:
                 LOG.warning('Exception: %s', e)
+                traceback.print_tb(*sys.exc_info())
             finally:
                 self._watcher = None
             LOG.info('Exit watcher loop')

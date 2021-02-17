@@ -7,21 +7,26 @@ import logging
 import jsonschema
 import ska_sdp_config
 
+from ska_telmodel.schema import validate
+from ska_telmodel.sdp.version import SDP_ASSIGNRES, SDP_CONFIG
 from .exceptions import raise_command_failed
 
 MSG_VALIDATION_FAILED = 'Configuration validation failed'
 LOG = logging.getLogger('ska_sdp_config')
+SCHEMA_VERSION = '0.2'
 
 
 def validate_assign_resources(config_str):
     """Validate AssignResources command configuration.
 
-    :param config_str:
+    :param config_str: configuration string in dict format
     :returns: SBI and list of processing blocks
 
     """
+
     # Validate the configuration string against the JSON schema
-    config = validate_json_config(config_str, 'assign_resources.json')
+    schema_uri = SDP_ASSIGNRES + SCHEMA_VERSION
+    config = validate_json_config(config_str, schema_uri=schema_uri)
 
     if config is None:
         # Validation has failed, so raise an error
@@ -105,8 +110,10 @@ def validate_configure(config_str):
     :returns: update to be applied to SBI
 
     """
-    # Validate the configuration string against JSON schema
-    config = validate_json_config(config_str, 'configure.json')
+
+    # Validate the configuration string against the JSON schema
+    schema_uri = SDP_CONFIG + SCHEMA_VERSION
+    config = validate_json_config(config_str, schema_uri=schema_uri)
 
     if config is None:
         # Validation has failed, so raise an error
@@ -126,7 +133,7 @@ def validate_scan(config_str):
 
     """
     # Validate the configuration string against the JSON schema
-    config = validate_json_config(config_str, 'scan.json')
+    config = validate_json_config(config_str, schema_filename='scan.json')
 
     if config is None:
         # Validation has failed, so raise an error
@@ -137,28 +144,40 @@ def validate_scan(config_str):
     return scan_id
 
 
-def validate_json_config(config_str, schema_filename):
+def validate_json_config(config_str, schema_uri=None, schema_filename=None):
     """
     Validate a JSON configuration against a schema.
 
     :param config_str: JSON configuration string
+    :param schema_uri: Default schema from telescope model
     :param schema_filename: name of schema file in the 'schema'
             sub-directory
     :returns: validated configuration (as dict/list), or None if
         validation fails
 
     """
-    LOG.debug('Validating JSON configuration against schema %s',
-              schema_filename)
-    schema_path = os.path.join(os.path.dirname(__file__), 'schema',
-                               schema_filename)
 
     config = None
     try:
         config = json.loads(config_str)
-        with open(schema_path, 'r') as file:
-            schema = json.load(file)
-        jsonschema.validate(config, schema)
+        if schema_filename is None:
+            if 'interface' in config.keys():
+                schema = config['interface']
+                LOG.debug('Validating JSON configuration against schema %s',
+                          schema)
+                validate(schema, config, 1)
+            else:
+                LOG.debug('Validating JSON configuration against schema %s',
+                          schema_uri)
+                validate(schema_uri, config, 1)
+        else:
+            LOG.debug('Validating JSON configuration against schema %s',
+                      schema_filename)
+            schema_path = os.path.join(os.path.dirname(__file__), 'schema',
+                                       schema_filename)
+            with open(schema_path, 'r') as file:
+                schema = json.load(file)
+            jsonschema.validate(config, schema)
     except json.JSONDecodeError as error:
         LOG.error('Unable to decode configuration string as JSON: %s',
                   error.msg)
@@ -166,6 +185,10 @@ def validate_json_config(config_str, schema_filename):
     except jsonschema.ValidationError as error:
         LOG.error('Unable to validate JSON configuration: %s',
                   error.message)
+        config = None
+    except ValueError as error:
+        LOG.error('Unable to validate JSON configuration: %s',
+                    str(error))
         config = None
 
     if config is not None:

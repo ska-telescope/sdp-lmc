@@ -21,7 +21,7 @@ setuptools.setup(
     license=RELEASE_INFO['LICENSE'],
     long_description=LONG_DESCRIPTION,
     long_description_content_type='text/markdown',
-    url='https://gitlab.com/ska-telescope/sdp-lmc/',
+    url='https://gitlab.com/ska-telescope/sdp/ska-sdp-lmc',
     package_dir={'': 'src'},
     packages=setuptools.find_packages('src'),
     package_data={
@@ -31,8 +31,9 @@ setuptools.setup(
         'pytango',
         'jsonschema',
         'lmcbaseclasses>=0.8',
-        'ska-sdp-config>=0.0.11',
+        'ska-sdp-config>=0.2.1',
         'ska-logging>=0.3.0',
+        'ska-telescope-model>=0.3.0',
     ],
     entry_points={
         'console_scripts': ['SDPMaster = ska_sdp_lmc.master:main',

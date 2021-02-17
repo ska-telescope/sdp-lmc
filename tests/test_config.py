@@ -1,3 +1,10 @@
+# coding: utf-8
+"""Test for master and subarray config."""
+# pylint: disable=protected-access
+# pylint: disable=invalid-name
+# pylint: disable=too-many-branches
+# pylint: disable=too-many-statements
+
 from tango import DevState
 from ska_sdp_config import ProcessingBlock
 from ska_sdp_lmc import master_config, subarray_config
@@ -5,11 +12,11 @@ from ska_sdp_lmc.attributes import ObsState
 
 
 def test_master_config():
+    """Test master device configuration interface."""
     config = master_config.MasterConfig()
     config._client.backend.delete('/master', must_exist=False)
 
     # Initialisation
-
     for txn in config.txn():
         master = config.master(txn)
         master.create_if_not_present(DevState.STANDBY)
@@ -20,7 +27,6 @@ def test_master_config():
         assert master.state == DevState.STANDBY
 
     # Set transaction ID and device state
-
     for txn in config.txn():
         master = config.master(txn)
         master.transaction_id = 'aaa'
@@ -46,6 +52,7 @@ def test_master_config():
     config._client.backend.delete('/master')
 
 def test_subarray_config():
+    """Test subarray device configuration interface."""
     subarray_id = '01'
     config = subarray_config.SubarrayConfig(subarray_id)
     config._client.backend.delete('/subarray', must_exist=False, recursive=True)
@@ -53,7 +60,6 @@ def test_subarray_config():
     config._client.backend.delete('/pb', must_exist=False, recursive=True)
 
     # Initialisation
-
     for txn in config.txn():
         subarray = config.subarray(txn)
         subarray.create_if_not_present(DevState.OFF, ObsState.EMPTY)
@@ -69,7 +75,6 @@ def test_subarray_config():
         assert subarray.receive_addresses is None
 
     # Set attributes
-
     for txn in config.txn():
         subarray = config.subarray(txn)
         subarray.command = 'command_aaa'
@@ -91,7 +96,6 @@ def test_subarray_config():
         assert subarray.receive_addresses is None
 
     # Create first SBI and its PBs
-
     for txn in config.txn():
         subarray = config.subarray(txn)
         sbi, pbs = fake_sbi_and_pbs('xxx')
@@ -108,7 +112,6 @@ def test_subarray_config():
         assert sbi['status'] == 'ACTIVE'
 
     # Select scan type and set scan ID
-
     for txn in config.txn():
         subarray = config.subarray(txn)
         subarray.add_scan_types(None)
@@ -121,7 +124,6 @@ def test_subarray_config():
         assert subarray.scan_id == 456
 
     # Finish SBI
-
     for txn in config.txn():
         subarray = config.subarray(txn)
         subarray.finish_sbi()
@@ -137,7 +139,6 @@ def test_subarray_config():
         assert sbi['status'] == 'FINISHED'
 
     # Create second SBI and its PBs
-
     for txn in config.txn():
         subarray = config.subarray(txn)
         sbi, pbs = fake_sbi_and_pbs('yyy')
@@ -148,13 +149,13 @@ def test_subarray_config():
         assert subarray.scan_type is None
         assert subarray.scan_id is None
         assert subarray.receive_addresses is None
+
         # Use low-level SBI interface to check SBI
         sbi = txn.get_scheduling_block('sbi-yyy')
         assert sbi['subarray_id'] == subarray_id
         assert sbi['status'] == 'ACTIVE'
 
     # Add a new scan type, select it and set scan ID
-
     for txn in config.txn():
         subarray = config.subarray(txn)
         subarray.add_scan_types([{'id': 'zzz'}])
@@ -167,7 +168,6 @@ def test_subarray_config():
         assert subarray.scan_id == 789
 
     # Cancel SBI
-
     for txn in config.txn():
         subarray = config.subarray(txn)
         subarray.cancel_sbi()
@@ -183,7 +183,6 @@ def test_subarray_config():
         assert sbi['status'] == 'CANCELLED'
 
     # Test invalid state and obsState values
-
     for txn in config.txn():
         # Use low-level subarray interface to set invalid state and obs_state
         subarray = txn.get_subarray(subarray_id)
@@ -202,6 +201,7 @@ def test_subarray_config():
 
 
 def fake_sbi_and_pbs(name):
+    """Generate fake scheduling block instance and processing blocks."""
     sbi_id = 'sbi-' + name
     pb_id = 'pb-' + name
     sbi = {

@@ -13,7 +13,7 @@ from .tango_logging import log_transaction_id
 
 LOG = logging.getLogger('ska_sdp_lmc')
 FEATURE_ALL_COMMANDS_HAVE_ARGUMENT = FeatureToggle(
-    'all_commands_have_argument', True
+    'all_commands_have_argument', False
 )
 
 

@@ -1,5 +1,5 @@
 {
-  "id": "sbi-mvp01-20200425-00000",
+  "interface": "https://schema.skatelescope.org/ska-sdp-assignres/0.2",
   "max_length": 21600.0,
   "scan_types": [
     {

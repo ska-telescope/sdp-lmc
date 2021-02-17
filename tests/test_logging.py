@@ -1,3 +1,6 @@
+# coding: utf-8
+"""Test logging."""
+
 import logging
 import sys
 
@@ -10,35 +13,44 @@ MSG = "Running tango test"
 
 
 class ListHandler(logging.Handler):
+    """A class for list handler."""
     def __init__(self):
         super().__init__()
         self.list = []
 
     def emit(self, record: logging.LogRecord) -> None:
+        """Emit."""
         self.list.append(self.format(record))
 
     def get_last(self) -> str:
+        """Get last."""
         return self.list[-1]
 
     def get_last_tag(self) -> str:
-        return self.get_last().split('|')[6]
+        """Get the last tag."""
+        return self.get_last().split("|")[6]
 
     def __iter__(self) -> Iterable[str]:
+        """Iterable interface."""
         return self.list.__iter__()
 
 
 class FakeDevice:
+    """Class for Fake Device."""
     def info_stream(self, _: str, *args) -> None:
+        """Info Stream."""
         print("info stream should not be called")
 
     def get_name(self) -> str:
         return 'fake'
 
     def get_logger(self) -> logging.Logger:
+        """Get logger."""
         return tl.get_logger()
 
 
 def test_stuff():
+    """Testing stuff."""
     dev = FakeDevice()
 
     sys.argv = ['test']
@@ -55,3 +67,4 @@ def test_stuff():
     assert log is dev.get_logger()
     log.info(MSG)
     dev.info_stream(MSG)
+

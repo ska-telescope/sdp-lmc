@@ -10,21 +10,23 @@ import os
 import json
 import tango
 
-from ska_telmodel.sdp.schema import get_sdp_receive_addresses_schema
+from ska_telmodel.schema import validate
+from ska_telmodel.sdp.version import SDP_ASSIGNRES, SDP_CONFIG, SDP_RECVADDRS
 
 import pytest
 from pytest_bdd import (given, parsers, scenarios, then, when)
 
 import ska_sdp_config
-from . import test_logging
 from ska_sdp_lmc import (AdminMode, HealthState, ObsState,
                          devices_config, tango_logging)
+from . import test_logging
 
 CONFIG_DB_CLIENT = devices_config.new_config_db_client()
 SUBARRAY_ID = '01'
 RECEIVE_WORKFLOWS = ['test_receive_addresses']
 DEVICE_NAME = 'test_sdp/elt/subarray_1'
 LOG_LIST = test_logging.ListHandler()
+SCHEMA_VERSION = '0.2'
 
 # -----------------------------------------------------------------------------
 # Scenarios : Specify what we want the software to do
@@ -128,14 +130,50 @@ def call_command(subarray_device, command):
      :param command: the name of the command
 
      """
-    # Get information about the command and the command itself
+    # Check command is present
     command_list = subarray_device.get_command_list()
     assert command in command_list
+    # Get information about the command and the command itself
+    command_config = subarray_device.get_command_config(command)
     command_func = getattr(subarray_device, command)
 
     # Call the command
-    config_str = read_command_argument(command)
-    command_func(config_str)
+    if command_config.in_type == tango.DevVoid:
+        command_func()
+    elif command_config.in_type == tango.DevString:
+        config_str = read_command_argument(command)
+        command_func(config_str)
+    else:
+        message = 'Cannot handle command with argument type {}'
+        raise ValueError(message.format(command_config.in_type))
+
+    if command == 'AssignResources':
+        # Create the PB states, including the receive addresses for the receive
+        # workflow, which would be done by the PC and workflows
+        create_pb_states()
+
+    # Update the device attributes
+    subarray_device.update_attributes()
+
+
+@when('I call <command> without an interface value in the JSON configuration')
+def call_command_without_interface(subarray_device, command):
+    """Call an SDPSubarray command without an interface value.
+
+     :param subarray_device: an SDPSubarray device
+     :param command: the name of the command
+
+     """
+    # Check command is present
+    command_list = subarray_device.get_command_list()
+    assert command in command_list
+    # Get the command itself
+    command_func = getattr(subarray_device, command)
+
+    # Call the command after deleting the interface value in the configuration
+    config = read_command_argument(command, decode=True)
+    del config['interface']
+    command_func(json.dumps(config))
 
     if command == 'AssignResources':
         # Create the PB states, including the receive addresses for the receive
@@ -228,15 +266,23 @@ def command_raises_dev_failed(subarray_device, command):
     :param command: the name of the command.
 
     """
-    # Get information about the command and the command itself
+    # Check command is present
     command_list = subarray_device.get_command_list()
     assert command in command_list
+    # Get information about the command and the command itself
+    command_config = subarray_device.get_command_config(command)
     command_func = getattr(subarray_device, command)
 
     # Call the command
     with pytest.raises(tango.DevFailed):
-        config_str = read_command_argument(command)
-        command_func(config_str)
+        if command_config.in_type == tango.DevVoid:
+            command_func()
+        elif command_config.in_type == tango.DevString:
+            config_str = read_command_argument(command)
+            command_func(config_str)
+        else:
+            message = 'Cannot handle command with argument type {}'
+            raise ValueError(message.format(command_config.in_type))
 
 
 @then(parsers.parse('calling {command:S} with an invalid JSON configuration '
@@ -250,9 +296,10 @@ def command_with_invalid_json_raises_dev_failed(subarray_device, command):
     :param command: the name of the command
 
     """
-    # Get information about the command and the command itself
+    # Check command is present
     command_list = subarray_device.get_command_list()
     assert command in command_list
+    # Get the command itself
     command_func = getattr(subarray_device, command)
 
     # Read an invalid command argument
@@ -288,11 +335,17 @@ def receive_addresses_expected(subarray_device):
     :param subarray_device: An SDPSubarray device.
 
     """
+    recvaddrs_schema = SDP_RECVADDRS + SCHEMA_VERSION
+
     # Get the expected receive addresses from the data file
     receive_addresses_expected = read_receive_addresses()
     receive_addresses = json.loads(subarray_device.receiveAddresses)
     assert receive_addresses == receive_addresses_expected
-    get_sdp_receive_addresses_schema(3, True).validate(receive_addresses)
+    validate(recvaddrs_schema, receive_addresses, 2)
+
+    # With interface version given as part of JSON object
+    receive_addresses['interface'] = recvaddrs_schema
+    validate(None, receive_addresses, 2)
 
 
 @then('receiveAddresses should be an empty JSON object')

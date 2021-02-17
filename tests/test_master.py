@@ -100,7 +100,7 @@ def command(master_device, command):
     # Get command function
     command_func = getattr(master_device, command)
     # Call the command
-    command_func('{}')
+    command_func()
     # Update the device attributes
     master_device.update_attributes()
 
@@ -147,16 +147,18 @@ def command_raises_dev_failed_error(master_device, command):
     command_func = getattr(master_device, command)
     with pytest.raises(tango.DevFailed):
         # Call the command
-        command_func('{}')
+        command_func()
 
 
 @then('the log should not contain a transaction ID')
 def log_contains_no_transaction_id():
+    """Check that the log does not contain a transaction ID."""
     assert 'txn-' not in LOG_LIST.get_last_tag()
 
 
 @then('the log should contain a transaction ID')
 def log_contains_transaction_id():
+    """Check that the log contains a transaction ID."""
     assert 'txn-' in LOG_LIST.get_last_tag()
 
 

@@ -28,17 +28,17 @@ Feature: SDP Subarray Device
 
 		Examples:
 		| command          | input_type | output_type |
-		| On               | DevString  | DevVoid     |
-		| Off              | DevString  | DevVoid     |
+		| On               | DevVoid    | DevVoid     |
+		| Off              | DevVoid    | DevVoid     |
 		| AssignResources  | DevString  | DevVoid     |
-		| ReleaseResources | DevString  | DevVoid     |
+		| ReleaseResources | DevVoid    | DevVoid     |
 		| Configure        | DevString  | DevVoid     |
-		| End              | DevString  | DevVoid     |
+		| End              | DevVoid    | DevVoid     |
 		| Scan             | DevString  | DevVoid     |
-		| EndScan          | DevString  | DevVoid     |
-		| Abort            | DevString  | DevVoid     |
-		| ObsReset         | DevString  | DevVoid     |
-		| Restart          | DevString  | DevVoid     |
+		| EndScan          | DevVoid    | DevVoid     |
+		| Abort            | DevVoid    | DevVoid     |
+		| ObsReset         | DevVoid    | DevVoid     |
+		| Restart          | DevVoid    | DevVoid     |
 
 
 	#All commands, apart from On, are rejected when the state is OFF.
@@ -234,6 +234,21 @@ Feature: SDP Subarray Device
 		| Configure       | IDLE              |
 		| Configure       | READY             |
 		| Scan            | READY             |
+
+
+
+	#Commands that take a JSON configuration string are accepted without an interface value
+	Scenario Outline: Command is accepted without an interface value in JSON configuration
+		Given I have an SDPSubarray device
+		When obsState is <initial_obs_state>
+		And I call <command> without an interface value in the JSON configuration
+		Then obsState should be <final_obs_state>
+
+		Examples:
+		| command         | initial_obs_state | final_obs_state |
+		| AssignResources | EMPTY             | IDLE            |
+		| Configure       | IDLE              | READY           |
+		| Configure       | READY             | READY           |
 
 
 

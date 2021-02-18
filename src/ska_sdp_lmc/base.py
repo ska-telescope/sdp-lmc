@@ -52,7 +52,7 @@ class SDPDevice(Device):
         self._watcher = None
         self._event_loop = None
         self._in_command = False
-        self.push_queue = collections.deque()
+        self._push_queue = collections.deque()
 
     def delete_device(self):
         """Device destructor."""
@@ -125,7 +125,7 @@ class SDPDevice(Device):
             # thread if the main thread is running a command, so defer them.
             def f(): self.push_change_event(name, getter())
             if self._in_command:
-                self.push_queue.append(f)
+                self._push_queue.append(f)
             else:
                 f()
 

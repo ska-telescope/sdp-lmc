@@ -81,7 +81,6 @@ def set_device_state(master_device, initial_state):
     """
     # Set the device state in the config DB
     logging.info(f'set device state to {initial_state}')
-    logging.info(f'device {type(master_device)}')
     master_device.acquire()
     set_state(initial_state)
     master_device.release()
@@ -112,8 +111,8 @@ def command(master_device, command):
     # Call the command
     command_func('{}')
 
-    # Update the device attributes
-    update_attributes(master_device)
+    # Update the device attributes (does nothing if event loop active).
+    update_attributes(master_device, wait=False)
 
 
 # ----------
@@ -204,8 +203,10 @@ def set_state(state):
 
 
 def update_attributes(device, wait=True):
-    if wait and event_loop.FEATURE_EVENT_LOOP.is_active():
-        device.wait_for_event()
+    if event_loop.FEATURE_EVENT_LOOP.is_active():
+        if wait:
+            device.wait_for_event()
+            device.update_attributes()
     else:
         device.update_attributes()
     logging.info('Update attributes done')

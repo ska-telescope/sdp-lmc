@@ -36,30 +36,31 @@ def command_transaction(argdesc: Optional[str] = None):
         @functools.wraps(command_method)
         def wrapper(self, params_json='{}'):
             name = command_method.__name__
-            LOG.info('command %s', name)
+            LOG.info('command %s device %s', name, type(self).__name__)
             params = json.loads(params_json)
 
             def do_command():
-                self._in_command = True
-                LOG.info('in command')
                 if argdesc:
                     result = command_method(self, txn_id, params_json)
                 else:
                     result = command_method(self, txn_id)
-                self._in_command = False
-                LOG.info('done command')
-                LOG.info('%s push commands in queue', len(self._push_queue))
-                for f in self._push_queue:
-                    f()
                 return result
 
             # The idea here is to execute the command with a lock that will then
             # wait for notification from the event loop. Note that command
-            # execution is actually in the main thread.
+            # execution is actually in the main thread. Push events from the event
+            # thread fail while a command is executing, so issue them afterwards.
             # FIXME: only commands that write to the db should lock.
             with transaction(name, params, logger=LOG) as txn_id:
                 with log_transaction_id(txn_id):
+                    self._in_command = True
+                    LOG.info('in command %s', name)
                     ret = self._event_loop.do(do_command, name)
+                    self._in_command = False
+                    LOG.info('done command %s', name)
+                    LOG.info('%s push commands in queue', len(self._push_queue))
+                    for f in self._push_queue:
+                        f()
 
             return ret
 

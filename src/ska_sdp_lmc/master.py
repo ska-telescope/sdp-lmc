@@ -70,7 +70,6 @@ class SDPMaster(SDPDevice):
             master.create_if_not_present(DevState.STANDBY)
             LOG.info('create: %s', txn.get_master())
 
-        LOG.info('live threads %s', threading.enumerate())
         LOG.info('SDP Master initialised')
         self._start_event_loop()
 
@@ -182,14 +181,11 @@ class SDPMaster(SDPDevice):
         :param txn: configuration transaction
 
         """
-        LOG.info('get master state txn %s', txn)
         master = self._config.master(txn)
-        LOG.info('created master object')
         with log_transaction_id(master.transaction_id):
             state = master.state
             LOG.info('state %s -> %s', self.get_state(), state)
             self._set_state(state)
-        LOG.info('finished from config')
 
     # -------------------------
     # Attribute-setting methods

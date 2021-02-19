@@ -30,10 +30,9 @@ def new_event_loop(device):
 
 
 def _add_commands(device):
-    for f in (device.update_attributes, device.wait_for_event,
+    for f in (device.update_attributes, device.wait_for_event, device.flush_event_queue,
               device.acquire, device.release, device.stop_event_loop):
         cmd = command(f=f)
-        LOG.info('add command %s', f.__name__)
         device.add_command(cmd, True)
 
 
@@ -92,10 +91,10 @@ class _RealThread(threading.Thread):
         self.condition.release()
 
     def notify(self) -> None:
-        logging.info('Notify waiting threads')
+        logging.debug('Notify waiting threads')
         with self.condition:
             self.condition.notify_all()
-        logging.info('Notified waiting threads')
+        logging.debug('Notified waiting threads')
 
     def join(self, timeout: Optional[float] = None) -> None:
         LOG.info('Waiting for event thread to terminate')

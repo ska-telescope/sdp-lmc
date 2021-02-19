@@ -83,10 +83,8 @@ def set_device_state(master_device, initial_state):
     logging.info(f'set device state to {initial_state}')
     master_device.acquire()
     set_state(initial_state)
-    master_device.release()
-
-    # Update the device attributes
     update_attributes(master_device)
+    master_device.release()
     logging.info('done, state is %s', master_device.state())
 
     # Check that state has been set correctly
@@ -128,6 +126,7 @@ def check_device_state(master_device, final_state):
     :param final_state: expected state value
 
     """
+    print(f'*** state now {master_device.state()}')
     assert master_device.state() == tango.DevState.names[final_state]
 
 
@@ -167,6 +166,7 @@ def log_contains_no_transaction_id():
 
 @then('the log should contain a transaction ID')
 def log_contains_transaction_id():
+    print(f'*** last msg {LOG_LIST.get_last()}')
     assert 'txn-' in LOG_LIST.get_last_tag()
 
 
@@ -206,9 +206,6 @@ def update_attributes(device, wait=True):
     if event_loop.FEATURE_EVENT_LOOP.is_active():
         if wait:
             device.wait_for_event()
-            device.update_attributes()
+            device.flush_event_queue()
     else:
         device.update_attributes()
-    logging.info('Update attributes done')
-
-

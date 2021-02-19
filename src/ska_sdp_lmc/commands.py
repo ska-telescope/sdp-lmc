@@ -58,9 +58,7 @@ def command_transaction(argdesc: Optional[str] = None):
                     ret = self._event_loop.do(do_command, name)
                     self._in_command = False
                     LOG.info('done command %s', name)
-                    LOG.info('%s push commands in queue', len(self._push_queue))
-                    for f in self._push_queue:
-                        f()
+                    self.flush_event_queue()
 
             return ret
 

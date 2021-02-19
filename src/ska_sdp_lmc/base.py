@@ -108,11 +108,16 @@ class SDPDevice(Device):
         self._event_loop.release()
 
     def wait_for_event(self) -> None:
-        LOG.info('wait for event thread')
-        for handler in LOG.handlers:
-            handler.flush()
-        if self._event_loop is not None:
-            self._event_loop.wait()
+        with self.hold_lock():
+            LOG.info('wait for event thread')
+            for handler in LOG.handlers:
+                handler.flush()
+            if self._event_loop is not None:
+                self._event_loop.wait()
+
+    def flush_event_queue(self):
+        for f in self._push_queue:
+            f()
 
     def _set_attribute(self, name: str, value: Any, getter: Callable, setter: Callable):
         current = getter()
@@ -124,10 +129,12 @@ class SDPDevice(Device):
             # Push change events require a Tango lock and will fail from the event
             # thread if the main thread is running a command, so defer them.
             def f(): self.push_change_event(name, getter())
-            if self._in_command:
-                self._push_queue.append(f)
-            else:
-                f()
+            self._push_queue.append(f)
+            # FIXME: how does an external update flush the queue?
+            #if self._in_command:
+            #    self._push_queue.append(f)
+            #else:
+            #    f()
 
     def _set_state(self, value):
         """Set device state."""
@@ -145,13 +152,9 @@ class SDPDevice(Device):
 
     def _do_transaction(self, txn_wrapper):
         for txn in txn_wrapper.txn():
-            LOG.info('txn is %s', txn)
             with self.hold_lock():
-                LOG.info('call set from config')
                 self._set_from_config(txn)
-                LOG.info('return from set from config')
                 self._event_loop.notify()
-        LOG.info('transaction done')
 
     def set_attributes(self, loop: bool = True) -> None:
         """Set attributes based on configuration.
@@ -180,7 +183,6 @@ class SDPDevice(Device):
         else:
             LOG.info('set attributes without watch')
             self._do_transaction(self._config)
-        LOG.info('Exit set attributes')
 
     def _set_from_config(self, txn: Transaction) -> None:
         """Subclasses override this to set their state."""

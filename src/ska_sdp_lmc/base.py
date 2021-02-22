@@ -15,8 +15,9 @@ from ska_sdp_config.config import Transaction
 from . import release
 from .event_loop import new_event_loop
 from .exceptions import raise_command_not_allowed
+from .tango_logging import get_logger
 
-LOG = logging.getLogger('ska_sdp_lmc')
+LOG = get_logger()
 
 
 class SDPDevice(Device):
@@ -75,6 +76,11 @@ class SDPDevice(Device):
     # Private methods
     # ---------------
 
+    @classmethod
+    def _get_device_name(cls):
+        # This gets the class name minus SDP e.g. Master
+        return cls.__name__.split('SDP')[1]
+
     def _start_event_loop(self):
         # Only start the event loop from the main thread. This stops it starting
         # when the tango device test context is created.
@@ -83,41 +89,9 @@ class SDPDevice(Device):
             self._event_loop = new_event_loop(self)
             self._event_loop.start()
 
-    def stop_event_loop(self):
-        with self.hold_lock():
-            self._deleting = True
-            if self._watcher is not None:
-                LOG.info('trigger watcher loop')
-                self._watcher.trigger()
-                self._watcher = None
-
-            if self._event_loop is not None:
-                self._event_loop.join()
-                self._event_loop = None
-
-    def hold_lock(self) -> contextlib.AbstractContextManager:
+    def _hold_lock(self) -> contextlib.AbstractContextManager:
         return (self._event_loop.condition if self._event_loop is not None
                 else contextlib.nullcontext())
-
-    def acquire(self) -> None:
-        LOG.info('acquire lock on condition %s', self._event_loop.condition)
-        self._event_loop.acquire()
-
-    def release(self) -> None:
-        LOG.info('release lock on condition %s', self._event_loop.condition)
-        self._event_loop.release()
-
-    def wait_for_event(self) -> None:
-        with self.hold_lock():
-            LOG.info('wait for event thread')
-            for handler in LOG.handlers:
-                handler.flush()
-            if self._event_loop is not None:
-                self._event_loop.wait()
-
-    def flush_event_queue(self):
-        for f in self._push_queue:
-            f()
 
     def _set_attribute(self, name: str, value: Any, getter: Callable, setter: Callable):
         current = getter()
@@ -140,10 +114,47 @@ class SDPDevice(Device):
         """Set device state."""
         self._set_attribute('State', value, self.get_state, self.set_state)
 
-    @classmethod
-    def _get_device_name(cls):
-        # This gets the class name minus SDP e.g. Master
-        return cls.__name__.split('SDP')[1]
+    # ---------------
+    # These are exposed as commands to be used by tests.
+    # ---------------
+
+    def stop_event_loop(self):
+        """Stop running the event loop."""
+        with self._hold_lock():
+            self._deleting = True
+            if self._watcher is not None:
+                LOG.info('trigger watcher loop')
+                self._watcher.trigger()
+                self._watcher = None
+
+            if self._event_loop is not None:
+                self._event_loop.join()
+                self._event_loop = None
+
+    def acquire(self) -> None:
+        """Explicitly acquire a lock on the device for the current thread."""
+        LOG.info('acquire lock on condition %s', self._event_loop.condition)
+        self._event_loop.acquire()
+
+    def release(self) -> None:
+        """Explicitly release a lock on the device for the current thread."""
+        LOG.info('release lock on condition %s', self._event_loop.condition)
+        self._event_loop.release()
+
+    def wait_for_event(self) -> None:
+        """Wait for the event loop to update the device."""
+        with self._hold_lock():
+            LOG.info('wait for event thread')
+            if self._event_loop is not None:
+                self._event_loop.wait()
+
+    def flush_event_queue(self):
+        """Flush anything waiting in the event queue."""
+        LOG.info('flush event queue')
+        with self._hold_lock():
+            while self._push_queue:
+                f = self._push_queue.popleft()
+                f()
 
     def update_attributes(self):
         """Update the device attributes manually."""
@@ -152,7 +163,7 @@ class SDPDevice(Device):
 
     def _do_transaction(self, txn_wrapper):
         for txn in txn_wrapper.txn():
-            with self.hold_lock():
+            with self._hold_lock():
                 self._set_from_config(txn)
                 self._event_loop.notify()
 
@@ -169,7 +180,6 @@ class SDPDevice(Device):
         if loop:
             try:
                 for watcher in self._config.watcher():
-                    LOG.info('watcher is %s', type(watcher))
                     if self._deleting:
                         break
                     self._watcher = watcher

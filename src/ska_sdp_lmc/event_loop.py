@@ -2,7 +2,6 @@
 import contextlib
 import logging
 import threading
-from time import sleep
 from typing import Callable, Any, Optional
 
 from tango import EnsureOmniThread
@@ -12,8 +11,6 @@ from .feature_toggle import FeatureToggle
 
 LOG = logging.getLogger('ska_sdp_lmc')
 FEATURE_EVENT_LOOP = FeatureToggle('event_loop', True)
-
-# *** This needs some cleanup to remove any useless stuff.
 
 
 def new_event_loop(device):
@@ -30,6 +27,7 @@ def new_event_loop(device):
 
 
 def _add_commands(device):
+    """Add commands that the tests can use."""
     for f in (device.update_attributes, device.wait_for_event, device.flush_event_queue,
               device.acquire, device.release, device.stop_event_loop):
         cmd = command(f=f)
@@ -106,11 +104,9 @@ class _RealThread(threading.Thread):
         # notification from the event thread.
         LOG.info('Call %s', name)
         with self.condition:
-            LOG.info('Execute %s', name)
             ret = f(*args, **kwargs)
             LOG.info('Waiting for update')
             self.condition.wait()
-        #sleep(5)
         LOG.info('Update received')
         return ret
 

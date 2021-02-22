@@ -9,9 +9,9 @@ from tango.server import command
 from ska.log_transactions import transaction
 
 from .feature_toggle import FeatureToggle
-from .tango_logging import log_transaction_id
+from .tango_logging import log_transaction_id, get_logger
 
-LOG = logging.getLogger('ska_sdp_lmc')
+LOG = get_logger()
 FEATURE_ALL_COMMANDS_HAVE_ARGUMENT = FeatureToggle(
     'all_commands_have_argument', True
 )
@@ -54,10 +54,8 @@ def command_transaction(argdesc: Optional[str] = None):
             with transaction(name, params, logger=LOG) as txn_id:
                 with log_transaction_id(txn_id):
                     self._in_command = True
-                    LOG.info('in command %s', name)
                     ret = self._event_loop.do(do_command, name)
                     self._in_command = False
-                    LOG.info('done command %s', name)
                     self.flush_event_queue()
 
             return ret

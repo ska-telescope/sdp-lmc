@@ -1,5 +1,6 @@
 import logging
 import sys
+import threading
 
 import tango
 from typing import Iterable
@@ -13,15 +14,46 @@ class ListHandler(logging.Handler):
     def __init__(self):
         super().__init__()
         self.list = []
+        self.cv = threading.Condition()
+
+    def clear(self) -> None:
+        print('*** clear logging')
+        with self.cv:
+            self.list.clear()
 
     def emit(self, record: logging.LogRecord) -> None:
-        self.list.append(self.format(record))
+        with self.cv:
+            self.list.append(self.format(record))
+            print(f'*** list size now {len(self.list)}')
+
+    def get_line(self, pos: int):
+        return self.list[pos] if self.list else '||||||'
+
+    def get_tag_from(self, pos: int) -> str:
+        return self.get_tag_from_line(self.get_line(pos))
+
+    @staticmethod
+    def get_tag_from_line(line: str) -> str:
+        return line.split('|')[6]
 
     def get_last(self) -> str:
-        return self.list[-1] if self.list else '||||||'
+        return self.get_line(-1)
 
     def get_last_tag(self) -> str:
-        return self.get_last().split('|')[6]
+        return self.get_tag_from(-1)
+
+    def text_in_tag(self, text: str, last: int = 1) -> bool:
+        sub_list = self.list[:-last]
+        is_text_in = False
+        print(f'*** list size {len(self.list)} sublist {len(sub_list)}')
+        for line in self.list:
+            print(f'*** {line}')
+        for item in sub_list:
+            print(f'*** check {text} in {item}')
+            if text in self.get_tag_from_line(item):
+                is_text_in = True
+                break
+        return is_text_in
 
     def __iter__(self) -> Iterable[str]:
         return self.list.__iter__()

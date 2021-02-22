@@ -2,7 +2,6 @@
 
 import signal
 import sys
-import threading
 
 from tango import AttrWriteType, DevState
 from tango.server import attribute, run

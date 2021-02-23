@@ -2,7 +2,6 @@
 
 # pylint: disable=redefined-outer-name
 # pylint: disable=duplicate-code
-import logging
 
 import pytest
 from pytest_bdd import (given, parsers, scenarios, then, when)
@@ -36,13 +35,18 @@ def master_device(devices):
 
     """
     device = devices.get_device(DEVICE_NAME)
-    if hasattr(device, 'stop_event_loop'):
-        device.stop_event_loop()
 
     # Configure logging to be captured
     LOG_LIST.clear()
     tango_logging.configure(device, device_name=DEVICE_NAME, handlers=[LOG_LIST],
                             level=tango.LogLevel.LOG_DEBUG)
+
+    # Check if device is fully configured (it's not from
+    # MultiDeviceTestContext initialisation).
+    is_configured = hasattr(device, 'stop_event_loop')
+    if is_configured:
+        #device.acquire()
+        device.stop_event_loop()
 
     # Wipe the config DB
     wipe_config_db()
@@ -52,6 +56,8 @@ def master_device(devices):
 
     # Update the device attributes
     update_attributes(device)
+    #if is_configured:
+    #    device.release()
 
     return device
 
@@ -160,15 +166,12 @@ def command_raises_dev_failed_error(master_device, command):
 
 @then('the log should not contain a transaction ID')
 def log_contains_no_transaction_id():
-    #assert not 'txn-' not in LOG_LIST.get_last_tag()
     assert not LOG_LIST.text_in_tag('txn-', last=5)
 
 
 @then('the log should contain a transaction ID')
 def log_contains_transaction_id():
-    print(f'*** last msg {LOG_LIST.get_last()}')
-    #assert 'txn-' in LOG_LIST.get_last_tag()
-    # There can be a deleting device message as the last one.
+    # Allow some scope for some additional messages afterwards.
     assert LOG_LIST.text_in_tag('txn-', last=5)
 
 

@@ -1,5 +1,4 @@
 """Master device configuration interface."""
-import logging
 from typing import Any, Optional
 
 from tango import DevState

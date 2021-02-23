@@ -2,7 +2,6 @@
 import collections
 import contextlib
 import enum
-import logging
 import sys
 import threading
 import traceback
@@ -133,6 +132,8 @@ class SDPDevice(Device):
 
     def acquire(self) -> None:
         """Explicitly acquire a lock on the device for the current thread."""
+        LOG.info(f'LOG same as getLogger {LOG is get_logger()} LOG handlers {len(LOG.handlers)}'
+                 f' logger handlers {len(get_logger().handlers)}')
         LOG.info('acquire lock on condition %s', self._event_loop.condition)
         self._event_loop.acquire()
 
@@ -150,7 +151,8 @@ class SDPDevice(Device):
 
     def flush_event_queue(self):
         """Flush anything waiting in the event queue."""
-        LOG.info('flush event queue')
+        LOG.info('flush event queue, contains %s events', len(self._push_queue))
+        # The lock is probably not necessary as a deque should be thread-safe.
         with self._hold_lock():
             while self._push_queue:
                 f = self._push_queue.popleft()

@@ -1,8 +1,5 @@
 """Config DB related tasks for SDP devices."""
 
-import logging
-import threading
-
 import ska_sdp_config
 from .feature_toggle import FeatureToggle
 from .tango_logging import get_logger

@@ -156,7 +156,8 @@ def get_logger() -> logging.Logger:
     """
     Get a logger instance.
 
-    Call this after configuring.
+    This always returns the same logger.
+
     :return: logger
     """
     return logging.getLogger('ska_sdp_lmc')
@@ -189,8 +190,8 @@ def configure(device: Any, device_name: str = None,
     #device_class.get_logger = lambda self: get_logger()
 
     # Now initialise the logging.
-    configure_logging(level=to_python_level(level),
-                      tags_filter=TangoFilter)
+    python_level = to_python_level(level)
+    configure_logging(python_level, tags_filter=TangoFilter)
     log = get_logger()
     for handler in log.handlers:
         log.removeHandler(handler)
@@ -201,7 +202,7 @@ def configure(device: Any, device_name: str = None,
     # If it's a real tango device, add a handler.
     if FEATURE_TANGO_LOGGER.is_active():
         if isinstance(device, Device):
-            log.info('Adding tango logging handler')
+            log.debug('Adding tango logging handler')
             handlers.append(TangoLoggingServiceHandler(device.get_logger()))
         else:
             cls = type(device)
@@ -209,6 +210,7 @@ def configure(device: Any, device_name: str = None,
 
     tango_filter = TangoFilter()
     for handler in handlers:
+        log.debug('add handler %s', handler.__class__.__name__)
         handler.addFilter(tango_filter)
         handler.setFormatter(get_default_formatter(tags=True))
         log.addHandler(handler)
@@ -222,6 +224,9 @@ def init_logger(device: Any) -> None:
 
     :param device: to configure.
     """
+    # The tests configure the logger themselves, don't overwrite it!
+    if 'pytest' in sys.modules:
+        return
     log_level = tango.LogLevel.LOG_INFO
     if len(sys.argv) > 2 and '-v' in sys.argv[2]:
         log_level = tango.LogLevel.LOG_DEBUG

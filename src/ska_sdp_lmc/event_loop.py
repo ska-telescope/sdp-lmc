@@ -1,15 +1,15 @@
 """Event loop support"""
 import contextlib
-import logging
 import threading
 from typing import Callable, Any, Optional
 
 from tango import EnsureOmniThread
 from tango.server import command
 
+from . import tango_logging
 from .feature_toggle import FeatureToggle
 
-LOG = logging.getLogger('ska_sdp_lmc')
+LOG = tango_logging.get_logger()
 FEATURE_EVENT_LOOP = FeatureToggle('event_loop', True)
 
 
@@ -89,10 +89,10 @@ class _RealThread(threading.Thread):
         self.condition.release()
 
     def notify(self) -> None:
-        logging.debug('Notify waiting threads')
+        LOG.debug('Notify waiting threads')
         with self.condition:
             self.condition.notify_all()
-        logging.debug('Notified waiting threads')
+        LOG.debug('Notified waiting threads')
 
     def join(self, timeout: Optional[float] = None) -> None:
         LOG.info('Waiting for event thread to terminate')

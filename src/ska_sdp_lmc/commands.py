@@ -1,7 +1,6 @@
 """Functions for creating Tango device commands."""
 
 import json
-import logging
 import functools
 from typing import Optional, Callable
 

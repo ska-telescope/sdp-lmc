@@ -14,17 +14,16 @@ class ListHandler(logging.Handler):
     def __init__(self):
         super().__init__()
         self.list = []
-        self.cv = threading.Condition()
+        #self.cv = threading.Condition()
 
     def clear(self) -> None:
-        print('*** clear logging')
-        with self.cv:
-            self.list.clear()
+        #with self.cv:
+        self.list.clear()
 
     def emit(self, record: logging.LogRecord) -> None:
-        with self.cv:
-            self.list.append(self.format(record))
-            print(f'*** list size now {len(self.list)}')
+        #with self.cv:
+        msg = self.format(record)
+        self.list.append(msg)
 
     def get_line(self, pos: int):
         return self.list[pos] if self.list else '||||||'
@@ -45,11 +44,7 @@ class ListHandler(logging.Handler):
     def text_in_tag(self, text: str, last: int = 1) -> bool:
         sub_list = self.list[:-last]
         is_text_in = False
-        print(f'*** list size {len(self.list)} sublist {len(sub_list)}')
-        for line in self.list:
-            print(f'*** {line}')
         for item in sub_list:
-            print(f'*** check {text} in {item}')
             if text in self.get_tag_from_line(item):
                 is_text_in = True
                 break

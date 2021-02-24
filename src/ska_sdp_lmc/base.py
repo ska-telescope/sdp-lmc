@@ -3,8 +3,9 @@
 import enum
 import logging
 import threading
+from typing import Callable
 
-from tango import AttrWriteType, EnsureOmniThread
+from tango import AttrWriteType, AutoTangoMonitor, EnsureOmniThread
 from tango.server import Device, command, attribute
 
 from ska_sdp_config.config import Transaction
@@ -109,30 +110,50 @@ class SDPDevice(Device):
         LOG.info('Starting event loop')
         # Use EnsureOmniThread to make it thread-safe under Tango
         with EnsureOmniThread():
-            self._set_attributes()
+            for watcher in self._config.watcher():
+                # Get the Tango monitor lock
+                with AutoTangoMonitor(self):
+                    for txn in watcher.txn():
+                        self._set_attr_from_config(txn)
 
     def update_attributes(self):
         """Update the device attributes manually."""
         LOG.info('Updating attributes')
-        self._set_attributes(loop=False)
+        for txn in self._config.txn():
+            self._set_attr_from_config(txn)
 
-    def _set_attributes(self, loop: bool = True) -> None:
-        """Set attributes based on configuration.
+    def _set_attr_from_config(self, txn: Transaction) -> None:
+        """
+        Set attributes from configuration.
 
-        if `loop` is `True`, it acts as an event loop to watch for changes to
-        the configuration. If `loop` is `False` it makes a single pass.
+        This is called from the event loop. Subclasses override this to set
+        their attributes.
 
-        :param loop: watch for changes to configuration and loop
+        :param txn: configuration transaction
 
         """
-        for txn in self._config.txn():
-            self._set_from_config(txn)
-            if loop:
-                # Loop the transaction when the config entries are changed
-                txn.loop(wait=True)
 
-    def _set_from_config(self, txn: Transaction) -> None:
-        """Subclasses override this to set their state."""
+    def _update_attr_until_condition(self, condition: Callable):
+        """
+        Update attributes until condition is satisfied.
+
+        :param condition: condition to exit update loop
+
+        """
+        for watcher in self._config.watcher():
+            for txn in watcher.txn():
+                self._set_attr_from_config(txn)
+            if condition():
+                break
+
+    def _update_attr_until_state(self, values):
+        """
+        Update attributes until device state reaches one of the values.
+
+        :param values: list of state values
+
+        """
+        self._update_attr_until_condition(lambda: self.get_state() in values)
 
     # -----------------------
     # Command allowed methods

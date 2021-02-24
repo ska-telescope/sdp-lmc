@@ -107,6 +107,8 @@ class SDPMaster(SDPDevice):
             master.transaction_id = transaction_id
             master.state = DevState.ON
 
+        self._update_attr_until_state([DevState.ON])
+
     def is_Disable_allowed(self):
         """Check if the Disable command is allowed."""
         self._command_allowed_state(
@@ -126,6 +128,8 @@ class SDPMaster(SDPDevice):
             master = self._config.master(txn)
             master.transaction_id = transaction_id
             master.state = DevState.DISABLE
+
+        self._update_attr_until_state([DevState.DISABLE])
 
     def is_Standby_allowed(self):
         """Check if the Standby command is allowed."""
@@ -147,6 +151,8 @@ class SDPMaster(SDPDevice):
             master.transaction_id = transaction_id
             master.state = DevState.STANDBY
 
+        self._update_attr_until_state([DevState.STANDBY])
+
     def is_Off_allowed(self):
         """Check if the Off command is allowed."""
         self._command_allowed_state(
@@ -167,11 +173,13 @@ class SDPMaster(SDPDevice):
             master.transaction_id = transaction_id
             master.state = DevState.OFF
 
+        self._update_attr_until_state([DevState.OFF])
+
     # ------------------
     # Event loop methods
     # ------------------
 
-    def _set_from_config(self, txn: Transaction) -> None:
+    def _set_attr_from_config(self, txn: Transaction) -> None:
         """
         Set attributes from configuration.
 

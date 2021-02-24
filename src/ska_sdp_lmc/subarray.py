@@ -212,6 +212,8 @@ class SDPSubarray(SDPDevice):
             subarray.state = DevState.ON
             subarray.obs_state_target = ObsState.EMPTY
 
+        self._update_attr_until_state([DevState.ON])
+
     def is_Off_allowed(self):
         """Check if the Off command is allowed."""
         command_name = 'Off'
@@ -246,6 +248,8 @@ class SDPSubarray(SDPDevice):
                 subarray.obs_state_target = ObsState.EMPTY
                 subarray.cancel_sbi()
 
+        self._update_attr_until_state([DevState.OFF])
+
     def is_AssignResources_allowed(self):
         """Check if the AssignResources command is allowed."""
         command_name = 'AssignResources'
@@ -274,6 +278,10 @@ class SDPSubarray(SDPDevice):
             subarray.obs_state_target = ObsState.IDLE
             subarray.create_sbi_and_pbs(sbi, pbs)
 
+        self._update_attr_until_obs_state(
+            [ObsState.RESOURCING, ObsState.IDLE]
+        )
+
     def is_ReleaseResources_allowed(self):
         """Check if the ReleaseResources command is allowed."""
         command_name = 'ReleaseResources'
@@ -298,6 +306,10 @@ class SDPSubarray(SDPDevice):
             subarray.transaction_id = transaction_id
             subarray.obs_state_target = ObsState.EMPTY
             subarray.finish_sbi()
+
+        self._update_attr_until_obs_state(
+            [ObsState.RESOURCING, ObsState.EMPTY]
+        )
 
     def is_Configure_allowed(self):
         """Check if the Configure command is allowed."""
@@ -327,6 +339,10 @@ class SDPSubarray(SDPDevice):
             subarray.add_scan_types(new_scan_types)
             subarray.scan_type = scan_type
 
+        self._update_attr_until_obs_state(
+            [ObsState.CONFIGURING, ObsState.READY]
+        )
+
     def is_Scan_allowed(self):
         """Check if the Scan command is allowed."""
         command_name = 'Scan'
@@ -353,6 +369,8 @@ class SDPSubarray(SDPDevice):
             subarray.obs_state_target = ObsState.SCANNING
             subarray.scan_id = scan_id
 
+        self._update_attr_until_obs_state([ObsState.SCANNING])
+
     def is_EndScan_allowed(self):
         """Check if the EndScan command is allowed."""
         command_name = 'EndScan'
@@ -375,6 +393,8 @@ class SDPSubarray(SDPDevice):
             subarray.obs_state_target = ObsState.READY
             subarray.scan_id = None
 
+        self._update_attr_until_obs_state([ObsState.READY])
+
     def is_End_allowed(self):
         """Check if the End command is allowed."""
         command_name = 'End'
@@ -396,6 +416,8 @@ class SDPSubarray(SDPDevice):
             subarray.transaction_id = transaction_id
             subarray.obs_state_target = ObsState.IDLE
             subarray.scan_type = None
+
+        self._update_attr_until_obs_state([ObsState.IDLE])
 
     def is_Abort_allowed(self):
         """Check if the Abort command is allowed."""
@@ -422,6 +444,10 @@ class SDPSubarray(SDPDevice):
             subarray.transaction_id = transaction_id
             subarray.obs_state_target = ObsState.ABORTED
 
+        self._update_attr_until_obs_state(
+            [ObsState.ABORTING, ObsState.ABORTED]
+        )
+
     def is_ObsReset_allowed(self):
         """Check if the ObsReset command is allowed."""
         command_name = 'ObsReset'
@@ -446,6 +472,7 @@ class SDPSubarray(SDPDevice):
             subarray.scan_type = None
             subarray.scan_id = None
 
+        self._update_attr_until_obs_state([ObsState.IDLE])
 
     def is_Restart_allowed(self):
         """Check if the Restart command is allowed."""
@@ -469,6 +496,8 @@ class SDPSubarray(SDPDevice):
             subarray.transaction_id = transaction_id
             subarray.obs_state_target = ObsState.EMPTY
             subarray.cancel_sbi()
+
+        self._update_attr_until_obs_state([ObsState.EMPTY])
 
     # ----------------------
     # Command allowed method
@@ -539,9 +568,9 @@ class SDPSubarray(SDPDevice):
     # Event loop methods
     # ------------------
 
-    def _set_from_config(self, txn: Transaction) -> None:
+    def _set_attr_from_config(self, txn: Transaction) -> None:
         """
-        Set attributes based on configuration.
+        Set attributes from configuration.
 
         This is called from the event loop.
 
@@ -567,6 +596,15 @@ class SDPSubarray(SDPDevice):
             else:
                 obs_state = subarray.obs_state_target
             self._set_obs_state(obs_state)
+
+    def _update_attr_until_obs_state(self, values):
+        """
+        Update attributes until obsState reaches one of the values.
+
+        :param values: list of obsState values
+
+        """
+        self._update_attr_until_condition(lambda: self._obs_state in values)
 
     # ---------------
     # Utility methods

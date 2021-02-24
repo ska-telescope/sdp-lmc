@@ -4,25 +4,13 @@ from typing import Any, Optional
 
 from tango import DevState
 
-from .devices_config import new_config_db_client
+from .base_config import BaseConfig
 
 
-class MasterConfig:
+class MasterConfig(BaseConfig):
     """
     Master configuration interface.
     """
-
-    def __init__(self):
-        self._client = new_config_db_client()
-
-    def txn(self):
-        """
-        Transaction loop.
-
-        :returns: configuration transaction iterator
-
-        """
-        return self._client.txn()
 
     def master(self, txn):
         """

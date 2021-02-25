@@ -18,6 +18,9 @@ def new_config_db_client():
 
 
 class BaseConfig:
+    """
+    Base configuration interface.
+    """
 
     def __init__(self):
         self._client = new_config_db_client()

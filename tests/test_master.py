@@ -8,11 +8,11 @@ from pytest_bdd import (given, parsers, scenarios, then, when)
 
 import tango
 
-from ska_sdp_lmc import HealthState, tango_logging, devices_config
+from ska_sdp_lmc import HealthState, tango_logging, base_config
 from . import test_logging
 
 DEVICE_NAME = 'test_sdp/elt/master'
-CONFIG_DB_CLIENT = devices_config.new_config_db_client()
+CONFIG_DB_CLIENT = base_config.new_config_db_client()
 LOG_LIST = test_logging.ListHandler()
 
 # -------------------------------
@@ -95,14 +95,9 @@ def command(master_device, command):
 
     """
     # Check command is present
-    command_list = master_device.get_command_list()
-    assert command in command_list
-    # Get command function
-    command_func = getattr(master_device, command)
+    assert command in master_device.get_command_list()
     # Call the command
-    command_func()
-    # Update the device attributes
-    master_device.update_attributes()
+    master_device.command_inout(command)
 
 
 # ----------
@@ -141,25 +136,22 @@ def command_raises_dev_failed_error(master_device, command):
     :param command: the name of the command.
     """
     # Check command is present
-    command_list = master_device.get_command_list()
-    assert command in command_list
-    # Get command function
-    command_func = getattr(master_device, command)
+    assert command in master_device.get_command_list()
+    # Call the command
     with pytest.raises(tango.DevFailed):
-        # Call the command
-        command_func()
+        master_device.command_inout(command)
 
 
 @then('the log should not contain a transaction ID')
 def log_contains_no_transaction_id():
     """Check that the log does not contain a transaction ID."""
-    assert 'txn-' not in LOG_LIST.get_last_tag()
+    assert all(not tag.startswith('txn-') for tag in LOG_LIST.get_tags())
 
 
 @then('the log should contain a transaction ID')
 def log_contains_transaction_id():
     """Check that the log contains a transaction ID."""
-    assert 'txn-' in LOG_LIST.get_last_tag()
+    assert any(tag.startswith('txn-') for tag in LOG_LIST.get_tags())
 
 
 # -----------------------------------------------------------------------------

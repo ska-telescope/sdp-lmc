@@ -18,10 +18,10 @@ from pytest_bdd import (given, parsers, scenarios, then, when)
 
 import ska_sdp_config
 from ska_sdp_lmc import (AdminMode, HealthState, ObsState,
-                         devices_config, tango_logging)
+                         base_config, tango_logging)
 from . import test_logging
 
-CONFIG_DB_CLIENT = devices_config.new_config_db_client()
+CONFIG_DB_CLIENT = base_config.new_config_db_client()
 SUBARRAY_ID = '01'
 RECEIVE_WORKFLOWS = ['test_receive_addresses']
 DEVICE_NAME = 'test_sdp/elt/subarray_1'
@@ -131,29 +131,26 @@ def call_command(subarray_device, command):
 
      """
     # Check command is present
-    command_list = subarray_device.get_command_list()
-    assert command in command_list
-    # Get information about the command and the command itself
+    assert command in subarray_device.get_command_list()
+    # Get information about the command
     command_config = subarray_device.get_command_config(command)
-    command_func = getattr(subarray_device, command)
-
-    # Call the command
+    # Get the argument
     if command_config.in_type == tango.DevVoid:
-        command_func()
+        argument = None
     elif command_config.in_type == tango.DevString:
-        config_str = read_command_argument(command)
-        command_func(config_str)
+        argument = read_command_argument(command)
     else:
         message = 'Cannot handle command with argument type {}'
         raise ValueError(message.format(command_config.in_type))
+    # Call the command
+    subarray_device.command_inout(command, cmd_param=argument)
 
     if command == 'AssignResources':
         # Create the PB states, including the receive addresses for the receive
         # workflow, which would be done by the PC and workflows
         create_pb_states()
-
-    # Update the device attributes
-    subarray_device.update_attributes()
+        # Update the device attributes
+        subarray_device.update_attributes()
 
 
 @when('I call <command> without an interface value in the JSON configuration')
@@ -165,23 +162,18 @@ def call_command_without_interface(subarray_device, command):
 
      """
     # Check command is present
-    command_list = subarray_device.get_command_list()
-    assert command in command_list
-    # Get the command itself
-    command_func = getattr(subarray_device, command)
-
-    # Call the command after deleting the interface value in the configuration
-    config = read_command_argument(command, decode=True)
-    del config['interface']
-    command_func(json.dumps(config))
+    assert command in subarray_device.get_command_list()
+    # Call the command after deleting the interface value in the argument
+    argument = read_command_argument(command, decode=True)
+    del argument['interface']
+    subarray_device.command_inout(command, cmd_param=json.dumps(argument))
 
     if command == 'AssignResources':
         # Create the PB states, including the receive addresses for the receive
         # workflow, which would be done by the PC and workflows
         create_pb_states()
-
-    # Update the device attributes
-    subarray_device.update_attributes()
+        # Update the device attributes
+        subarray_device.update_attributes()
 
 
 # -----------------------------------------------------------------------------
@@ -267,22 +259,20 @@ def command_raises_dev_failed(subarray_device, command):
 
     """
     # Check command is present
-    command_list = subarray_device.get_command_list()
-    assert command in command_list
-    # Get information about the command and the command itself
+    assert command in subarray_device.get_command_list()
+    # Get information about the command
     command_config = subarray_device.get_command_config(command)
-    command_func = getattr(subarray_device, command)
-
+    # Get the argument
+    if command_config.in_type == tango.DevVoid:
+        argument = None
+    elif command_config.in_type == tango.DevString:
+        argument = read_command_argument(command)
+    else:
+        message = 'Cannot handle command with argument type {}'
+        raise ValueError(message.format(command_config.in_type))
     # Call the command
     with pytest.raises(tango.DevFailed):
-        if command_config.in_type == tango.DevVoid:
-            command_func()
-        elif command_config.in_type == tango.DevString:
-            config_str = read_command_argument(command)
-            command_func(config_str)
-        else:
-            message = 'Cannot handle command with argument type {}'
-            raise ValueError(message.format(command_config.in_type))
+        subarray_device.command_inout(command, cmd_param=argument)
 
 
 @then(parsers.parse('calling {command:S} with an invalid JSON configuration '
@@ -297,17 +287,12 @@ def command_with_invalid_json_raises_dev_failed(subarray_device, command):
 
     """
     # Check command is present
-    command_list = subarray_device.get_command_list()
-    assert command in command_list
-    # Get the command itself
-    command_func = getattr(subarray_device, command)
-
-    # Read an invalid command argument
-    config_str = read_command_argument(command, invalid=True)
-
+    assert command in subarray_device.get_command_list()
+    # Get an invalid argument
+    argument = read_command_argument(command, invalid=True)
     # Call the command
     with pytest.raises(tango.DevFailed):
-        command_func(config_str)
+        subarray_device.command_inout(command, cmd_param=argument)
 
 
 @then('the processing blocks should be in the config DB')
@@ -362,13 +347,12 @@ def receive_addresses_empty(subarray_device):
 @then('the log should not contain a transaction ID')
 def log_contains_no_transaction_id():
     """Check that the log does not contain a transaction ID."""
-    assert 'txn-' not in LOG_LIST.get_last_tag()
-
+    assert all(not tag.startswith('txn-') for tag in LOG_LIST.get_tags())
 
 @then('the log should contain a transaction ID')
 def log_contains_transaction_id():
     """Check that the log does contain a transaction ID."""
-    assert 'txn-' in LOG_LIST.get_last_tag()
+    assert any(tag.startswith('txn-') for tag in LOG_LIST.get_tags())
 
 
 # -----------------------------------------------------------------------------

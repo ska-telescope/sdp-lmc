@@ -5,7 +5,7 @@ import logging
 import sys
 
 import tango
-from typing import Iterable
+from typing import Iterable, Set
 
 from ska_sdp_lmc import tango_logging as tl
 
@@ -29,6 +29,13 @@ class ListHandler(logging.Handler):
     def get_last_tag(self) -> str:
         """Get the last tag."""
         return self.get_last().split("|")[6]
+
+    def get_tags(self) -> Set[str]:
+        """Get tags from all lines."""
+        tags = set()
+        for line in self.list:
+            tags.update(line.split("|")[6].split(","))
+        return tags
 
     def __iter__(self) -> Iterable[str]:
         """Iterable interface."""

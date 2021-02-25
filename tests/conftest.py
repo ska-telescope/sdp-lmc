@@ -6,11 +6,11 @@ import pytest
 
 from tango.test_context import MultiDeviceTestContext
 
-from ska_sdp_lmc import SDPMaster, SDPSubarray, base, devices_config
+from ska_sdp_lmc import SDPMaster, SDPSubarray, base, base_config
 
 # Use the config DB memory backend in the devices. This will be overridden if
 # the FEATURE_CONFIG_DB environment variable is set to 1.
-devices_config.FEATURE_CONFIG_DB.set_default(False)
+base_config.FEATURE_CONFIG_DB.set_default(False)
 # Disable the event loop in the devices. This will be overridden if the
 # FEATURE_EVENT_LOOP environment variable is set to 1.
 base.FEATURE_EVENT_LOOP.set_default(False)

@@ -16,15 +16,16 @@ import pytest
 from pytest_bdd import (given, parsers, scenarios, then, when)
 
 import ska_sdp_config
-from . import test_logging
+from . import device_utils
 from ska_sdp_lmc import (AdminMode, HealthState, ObsState,
-                         devices_config, tango_logging, event_loop)
+                         base_config, tango_logging, event_loop)
 
-CONFIG_DB_CLIENT = devices_config.new_config_db_client()
+CONFIG_DB_CLIENT = base_config.new_config_db_client()
 SUBARRAY_ID = '01'
 RECEIVE_WORKFLOWS = ['test_receive_addresses']
 DEVICE_NAME = 'test_sdp/elt/subarray_1'
-LOG_LIST = test_logging.ListHandler()
+LOG = tango_logging.get_logger()
+
 
 # -----------------------------------------------------------------------------
 # Scenarios : Specify what we want the software to do
@@ -45,23 +46,7 @@ def subarray_device(devices):
     :param devices: the devices in a MultiDeviceTestContext
 
     """
-    device = devices.get_device(DEVICE_NAME)
-
-    # Wipe the config DB
-    wipe_config_db()
-
-    # Initialise the device
-    device.Init()
-
-    # Configure logging to be captured
-    LOG_LIST.list.clear()
-    tango_logging.configure(device, device_name=DEVICE_NAME, handlers=[LOG_LIST])
-    tango_logging.set_level(tango.LogLevel.LOG_DEBUG)
-
-    # Update the device attributes
-    device.update_attributes()
-
-    return device
+    return device_utils.init_device(devices, DEVICE_NAME, wipe_config_db)
 
 
 # -----------------------------------------------------------------------------
@@ -111,11 +96,10 @@ def set_subarray_device_obstate(subarray_device, initial_obs_state: str):
 
     """
     # Set the obsState in the config DB
+    subarray_device.acquire()
     set_state_and_obs_state('ON', initial_obs_state)
-
-    if not event_loop.FEATURE_EVENT_LOOP.is_active():
-        # Update the device attributes
-        subarray_device.update_attributes()
+    device_utils.update_attributes(subarray_device)
+    subarray_device.release()
 
     # Check obsState has been set correctly
     assert subarray_device.ObsState == ObsState[initial_obs_state]
@@ -142,11 +126,12 @@ def call_command(subarray_device, command):
     if command == 'AssignResources':
         # Create the PB states, including the receive addresses for the receive
         # workflow, which would be done by the PC and workflows
+        subarray_device.acquire()
         create_pb_states()
+        subarray_device.release()
 
-    if not event_loop.FEATURE_EVENT_LOOP.is_active():
-        # Update the device attributes
-        subarray_device.update_attributes()
+    # Update the device attributes (does nothing if event loop active).
+    device_utils.update_attributes(subarray_device, wait=False)
 
 
 # -----------------------------------------------------------------------------
@@ -312,13 +297,14 @@ def receive_addresses_empty(subarray_device):
 @then('the log should not contain a transaction ID')
 def log_contains_no_transaction_id():
     """Check that the log does not contain a transaction ID."""
-    assert 'txn-' not in LOG_LIST.get_last_tag()
+    assert not device_utils.LOG_LIST.text_in_tag('txn-', last=5)
 
 
 @then('the log should contain a transaction ID')
 def log_contains_transaction_id():
     """Check that the log does contain a transaction ID."""
-    assert 'txn-' in LOG_LIST.get_last_tag()
+    # Allow some scope for some additional messages afterwards.
+    assert device_utils.LOG_LIST.text_in_tag('txn-', last=5)
 
 
 # -----------------------------------------------------------------------------
@@ -327,11 +313,13 @@ def log_contains_transaction_id():
 
 def wipe_config_db():
     """Remove all entries in the config DB."""
+    LOG.info('wipe config db for subarray')
     CONFIG_DB_CLIENT.backend.delete('/pb', must_exist=False, recursive=True)
     CONFIG_DB_CLIENT.backend.delete('/sb', must_exist=False, recursive=True)
     CONFIG_DB_CLIENT.backend.delete('/subarray', must_exist=False,
                                     recursive=True)
     tango_logging.set_transaction_id('')
+    LOG.info('done wipe for subarray')
 
 
 def set_state_and_obs_state(state, obs_state):

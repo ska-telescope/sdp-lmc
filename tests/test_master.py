@@ -8,12 +8,11 @@ from pytest_bdd import (given, parsers, scenarios, then, when)
 
 import tango
 
-from ska_sdp_lmc import HealthState, tango_logging, devices_config, event_loop
-from . import test_logging
+from . import device_utils
+from ska_sdp_lmc import HealthState, tango_logging, base_config
 
 DEVICE_NAME = 'test_sdp/elt/master'
-CONFIG_DB_CLIENT = devices_config.new_config_db_client()
-LOG_LIST = test_logging.ListHandler()
+CONFIG_DB_CLIENT = base_config.new_config_db_client()
 LOG = tango_logging.get_logger()
 
 # -------------------------------
@@ -34,32 +33,7 @@ def master_device(devices):
     :param devices: the devices in a MultiDeviceTestContext
 
     """
-    device = devices.get_device(DEVICE_NAME)
-
-    # Configure logging to be captured
-    LOG_LIST.clear()
-    tango_logging.configure(device, device_name=DEVICE_NAME, handlers=[LOG_LIST],
-                            level=tango.LogLevel.LOG_DEBUG)
-
-    # Check if device is fully configured (it's not from
-    # MultiDeviceTestContext initialisation).
-    is_configured = hasattr(device, 'stop_event_loop')
-    if is_configured:
-        #device.acquire()
-        device.stop_event_loop()
-
-    # Wipe the config DB
-    wipe_config_db()
-
-    # Initialise the device
-    device.Init()
-
-    # Update the device attributes
-    update_attributes(device)
-    #if is_configured:
-    #    device.release()
-
-    return device
+    return device_utils.init_device(devices, DEVICE_NAME, wipe_config_db)
 
 
 # ----------
@@ -89,7 +63,7 @@ def set_device_state(master_device, initial_state):
     LOG.info(f'set device state to {initial_state}')
     master_device.acquire()
     set_state(initial_state)
-    update_attributes(master_device)
+    device_utils.update_attributes(master_device)
     master_device.release()
     LOG.info('done, state is %s', master_device.state())
 
@@ -116,7 +90,7 @@ def command(master_device, command):
     command_func('{}')
 
     # Update the device attributes (does nothing if event loop active).
-    update_attributes(master_device, wait=False)
+    device_utils.update_attributes(master_device, wait=False)
 
 
 # ----------
@@ -166,13 +140,13 @@ def command_raises_dev_failed_error(master_device, command):
 
 @then('the log should not contain a transaction ID')
 def log_contains_no_transaction_id():
-    assert not LOG_LIST.text_in_tag('txn-', last=5)
+    assert not device_utils.LOG_LIST.text_in_tag('txn-', last=5)
 
 
 @then('the log should contain a transaction ID')
 def log_contains_transaction_id():
     # Allow some scope for some additional messages afterwards.
-    assert LOG_LIST.text_in_tag('txn-', last=5)
+    assert device_utils.LOG_LIST.text_in_tag('txn-', last=5)
 
 
 # -----------------------------------------------------------------------------
@@ -181,10 +155,10 @@ def log_contains_transaction_id():
 
 def wipe_config_db():
     """Remove all entries in the config DB."""
-    LOG.info('wipe config db')
+    LOG.info('wipe config db for master')
     CONFIG_DB_CLIENT.backend.delete('/master', must_exist=False, recursive=True)
     tango_logging.set_transaction_id('')
-    LOG.info('done wipe')
+    LOG.info('done wipe for master')
 
 
 def set_state(state):
@@ -203,12 +177,3 @@ def set_state(state):
 
     for txn in CONFIG_DB_CLIENT.txn():
         txn.update_master(master)
-
-
-def update_attributes(device, wait=True):
-    if event_loop.FEATURE_EVENT_LOOP.is_active():
-        if wait:
-            device.wait_for_event()
-            device.flush_event_queue()
-    else:
-        device.update_attributes()

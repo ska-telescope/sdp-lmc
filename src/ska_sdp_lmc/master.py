@@ -184,7 +184,7 @@ class SDPMaster(SDPDevice):
         with log_transaction_id(master.transaction_id):
             state = master.state
             LOG.info('state %s -> %s', self.get_state(), state)
-            self._set_state(state)
+            self._schedule_update(self._set_state, state)
 
     # -------------------------
     # Attribute-setting methods

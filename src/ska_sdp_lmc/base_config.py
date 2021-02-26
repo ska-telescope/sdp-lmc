@@ -1,5 +1,4 @@
 """Config DB related tasks for SDP devices."""
-
 import ska_sdp_config
 from .feature_toggle import FeatureToggle
 from .tango_logging import get_logger
@@ -23,7 +22,6 @@ class BaseConfig:
 
     def __init__(self):
         self._client = new_config_db_client()
-        self._watcher = None
 
     def txn(self):
         """
@@ -41,8 +39,5 @@ class BaseConfig:
         :returns: configuration watcher
 
         """
-        return self._client.watcher()
 
-    def stop_watcher(self):
-        if self._watcher is not None:
-            self._watcher.close()
+        return self._client.watcher()

@@ -5,7 +5,7 @@ from typing import Any, Dict, List, Optional
 from tango import DevState
 
 from .attributes import ObsState
-from .devices_config import BaseConfig
+from .base_config import BaseConfig
 from .exceptions import raise_command_failed
 
 

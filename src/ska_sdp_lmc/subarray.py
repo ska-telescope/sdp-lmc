@@ -121,10 +121,8 @@ class SDPSubarray(SDPDevice):
             subarray = self._config.subarray(txn)
             subarray.create_if_not_present(DevState.OFF, ObsState.EMPTY)
 
-        # Start event loop
-        self._event_loop.start()
-
         LOG.info('SDP Subarray initialised')
+        self._start_event_loop()
 
     # -----------------
     # Attribute methods
@@ -403,7 +401,7 @@ class SDPSubarray(SDPDevice):
         self._command_allowed_state(command_name, [DevState.ON])
         self._command_allowed_obs_state(
             command_name,
-            [ObsState.IDLE, ObsState.CONFIGURING, Obs,
+            [ObsState.IDLE, ObsState.CONFIGURING, ObsState.READY,
              ObsState.SCANNING, ObsState.RESETTING]
         )
         return True
@@ -554,12 +552,13 @@ class SDPSubarray(SDPDevice):
             state = subarray.state
             LOG.info('state %s -> %s', self.get_state(), state)
             if state is not None:
-                self._set_state(state)
-                self._set_receive_addresses(subarray.receive_addresses)
-                self._set_scan_type(
+                self._schedule_update(self._set_state, state)
+                self._schedule_update(self._set_receive_addresses, subarray.receive_addresses)
+                self._schedule_update(self._set_scan_type,
                     subarray.scan_type if subarray.scan_type else 'null'
                 )
-                self._set_scan_id(subarray.scan_id if subarray.scan_id else 0)
+                self._schedule_update(self._set_scan_id,
+                                      subarray.scan_id if subarray.scan_id else 0)
 
                 if subarray.obs_state_target == ObsState.IDLE and \
                         subarray.command == 'AssignResources':
@@ -569,7 +568,7 @@ class SDPSubarray(SDPDevice):
                         obs_state = ObsState.IDLE
                 else:
                     obs_state = subarray.obs_state_target
-                self._set_obs_state(obs_state)
+                self._schedule_update(self._set_obs_state, obs_state)
 
     # ---------------
     # Utility methods

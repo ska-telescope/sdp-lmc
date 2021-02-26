@@ -3,7 +3,7 @@ from typing import Any, Optional
 
 from tango import DevState
 
-from .devices_config import BaseConfig
+from .base_config import BaseConfig
 
 
 class MasterConfig(BaseConfig):

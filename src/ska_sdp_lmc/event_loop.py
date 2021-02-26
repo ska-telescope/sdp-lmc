@@ -1,6 +1,7 @@
 """Event loop support"""
 import contextlib
 import threading
+import time
 from typing import Callable, Any, Optional
 
 from tango import EnsureOmniThread
@@ -28,7 +29,7 @@ def new_event_loop(device):
 
 def _add_commands(device):
     """Add commands that the tests can use."""
-    for f in (device.update_attributes, device.wait_for_event, device.flush_event_queue,
+    for f in (device.update_attributes, device.wait_for_event, device.flush_update_queue,
               device.acquire, device.release, device.stop_event_loop):
         cmd = command(f=f)
         device.add_command(cmd, True)
@@ -59,6 +60,7 @@ class _FakeThread:
 
     @staticmethod
     def do(f: Callable, name: str, *args, **kwargs) -> Any:
+        LOG.info('Call %s synchronously', name)
         return f(*args, **kwargs)
 
 
@@ -72,6 +74,11 @@ class _RealThread(threading.Thread):
     def _event_loop(self):
         """Event loop to update attributes automatically."""
         LOG.info('Starting event loop, name=%s', self.name)
+
+        # Give the main thread chance to set up its wait.
+        # There should be a more rigorous way of doing this.
+        time.sleep(0.1)
+
         # Use EnsureOmniThread to make it thread-safe under Tango
         with EnsureOmniThread():
             self.device.set_attributes()

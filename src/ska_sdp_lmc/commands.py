@@ -49,13 +49,10 @@ def command_transaction(argdesc: Optional[str] = None):
             # wait for notification from the event loop. Note that command
             # execution is actually in the main thread. Push events from the event
             # thread fail while a command is executing, so issue them afterwards.
-            # FIXME: only commands that write to the db should lock.
             with transaction(name, params, logger=LOG) as txn_id:
                 with log_transaction_id(txn_id):
-                    self._in_command = True
                     ret = self._event_loop.do(do_command, name)
-                    self._in_command = False
-                    self.flush_event_queue()
+                    self.flush_update_queue()
 
             return ret
 

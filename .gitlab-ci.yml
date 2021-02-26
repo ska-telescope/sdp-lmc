@@ -72,7 +72,7 @@ etcd_test:
         - "--initial-cluster=default=http://0.0.0.0:2380"
   variables:
     SDP_CONFIG_HOST: etcd
-    #FEATURE_EVENT_LOOP: 1
+    FEATURE_EVENT_LOOP: 1
     FEATURE_CONFIG_DB: 1
     FEATURE_TANGO_LOGGER: 1
   before_script:

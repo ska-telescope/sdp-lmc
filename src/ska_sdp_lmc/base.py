@@ -5,10 +5,10 @@ import enum
 import sys
 import threading
 import traceback
-from typing import Any, Callable
+from typing import Callable
 
 from tango import AttrWriteType
-from tango.server import Device, attribute, command
+from tango.server import Device, attribute
 
 from ska_sdp_config.config import Transaction
 from . import release
@@ -51,8 +51,7 @@ class SDPDevice(Device):
         self._deleting = False
         self._watcher = None
         self._event_loop = None
-        self._in_command = False
-        self._push_queue = collections.deque()
+        self._update_queue = collections.deque()
 
     def delete_device(self):
         """Device destructor."""
@@ -92,26 +91,16 @@ class SDPDevice(Device):
         return (self._event_loop.condition if self._event_loop is not None
                 else contextlib.nullcontext())
 
-    def _set_attribute(self, name: str, value: Any, getter: Callable, setter: Callable):
-        current = getter()
-        if value != current:
-            LOG.info('Setting %s from %s to %s, in command %s',
-                     name, current, value, self._in_command)
-            setter(value)
-
-            # Push change events require a Tango lock and will fail from the event
-            # thread if the main thread is running a command, so defer them.
-            def f(): self.push_change_event(name, getter())
-            self._push_queue.append(f)
-            # FIXME: how does an external update flush the queue?
-            #if self._in_command:
-            #    self._push_queue.append(f)
-            #else:
-            #    f()
-
     def _set_state(self, value):
         """Set device state."""
-        self._set_attribute('State', value, self.get_state, self.set_state)
+        if self.get_state() != value:
+            LOG.info('Setting device state to %s', value.name)
+            self.set_state(value)
+            self.push_change_event('State', self.get_state())
+
+    def _schedule_update(self, updater: Callable, *args):
+        def f(): updater(*args)
+        self._update_queue.append(f)
 
     # ---------------
     # These are exposed as commands to be used by tests.
@@ -132,14 +121,12 @@ class SDPDevice(Device):
 
     def acquire(self) -> None:
         """Explicitly acquire a lock on the device for the current thread."""
-        LOG.info(f'LOG same as getLogger {LOG is get_logger()} LOG handlers {len(LOG.handlers)}'
-                 f' logger handlers {len(get_logger().handlers)}')
-        LOG.info('acquire lock on condition %s', self._event_loop.condition)
+        LOG.debug('acquire lock on condition %s', self._event_loop.condition)
         self._event_loop.acquire()
 
     def release(self) -> None:
         """Explicitly release a lock on the device for the current thread."""
-        LOG.info('release lock on condition %s', self._event_loop.condition)
+        LOG.debug('release lock on condition %s', self._event_loop.condition)
         self._event_loop.release()
 
     def wait_for_event(self) -> None:
@@ -149,13 +136,12 @@ class SDPDevice(Device):
             if self._event_loop is not None:
                 self._event_loop.wait()
 
-    def flush_event_queue(self):
-        """Flush anything waiting in the event queue."""
-        LOG.info('flush event queue, contains %s events', len(self._push_queue))
-        # The lock is probably not necessary as a deque should be thread-safe.
+    def flush_update_queue(self):
+        """Flush anything waiting in the update queue."""
+        LOG.info('flush update queue, contains %s events', len(self._update_queue))
         with self._hold_lock():
-            while self._push_queue:
-                f = self._push_queue.popleft()
+            while self._update_queue:
+                f = self._update_queue.popleft()
                 f()
 
     def update_attributes(self):
@@ -165,9 +151,8 @@ class SDPDevice(Device):
 
     def _do_transaction(self, txn_wrapper):
         for txn in txn_wrapper.txn():
-            with self._hold_lock():
-                self._set_from_config(txn)
-                self._event_loop.notify()
+            self._set_from_config(txn)
+            self._event_loop.notify()
 
     def set_attributes(self, loop: bool = True) -> None:
         """Set attributes based on configuration.
@@ -182,10 +167,14 @@ class SDPDevice(Device):
         if loop:
             try:
                 for watcher in self._config.watcher():
+                    # A log message here seems to make it more stable...
+                    LOG.info('watcher %s wake-up, deleting %s',
+                             type(watcher).__name__, self._deleting)
                     if self._deleting:
                         break
-                    self._watcher = watcher
-                    self._do_transaction(watcher)
+                    with self._hold_lock():
+                        self._watcher = watcher
+                        self._do_transaction(watcher)
             except Exception as e:
                 LOG.warning('Exception: %s', e)
                 traceback.print_tb(*sys.exc_info())

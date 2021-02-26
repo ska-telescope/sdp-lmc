@@ -31,7 +31,7 @@ setuptools.setup(
         'pytango',
         'jsonschema',
         'lmcbaseclasses>=0.8',
-        'ska-sdp-config>=0.2.1',
+        'ska-sdp-config>=0.2.2',
         'ska-logging>=0.3.0',
     ],
     entry_points={

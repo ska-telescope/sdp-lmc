@@ -121,12 +121,12 @@ class SDPDevice(Device):
 
     def acquire(self) -> None:
         """Explicitly acquire a lock on the device for the current thread."""
-        LOG.debug('acquire lock on condition %s', self._event_loop.condition)
+        LOG.debug('acquire lock on %s', self._event_loop.condition)
         self._event_loop.acquire()
 
     def release(self) -> None:
         """Explicitly release a lock on the device for the current thread."""
-        LOG.debug('release lock on condition %s', self._event_loop.condition)
+        LOG.debug('release lock on %s', self._event_loop.condition)
         self._event_loop.release()
 
     def wait_for_event(self) -> None:
@@ -167,7 +167,6 @@ class SDPDevice(Device):
         if loop:
             try:
                 for watcher in self._config.watcher():
-                    # A log message here seems to make it more stable...
                     LOG.info('watcher %s wake-up, deleting %s',
                              type(watcher).__name__, self._deleting)
                     if self._deleting:

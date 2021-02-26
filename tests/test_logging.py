@@ -1,6 +1,5 @@
 import logging
 import sys
-import threading
 
 import tango
 from typing import Iterable
@@ -14,14 +13,11 @@ class ListHandler(logging.Handler):
     def __init__(self):
         super().__init__()
         self.list = []
-        #self.cv = threading.Condition()
 
     def clear(self) -> None:
-        #with self.cv:
         self.list.clear()
 
     def emit(self, record: logging.LogRecord) -> None:
-        #with self.cv:
         msg = self.format(record)
         self.list.append(msg)
 

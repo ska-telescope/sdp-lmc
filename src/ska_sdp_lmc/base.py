@@ -115,9 +115,9 @@ class SDPDevice(Device):
                 self._watcher.trigger()
                 self._watcher = None
 
-            if self._event_loop is not None:
-                self._event_loop.join()
-                self._event_loop = None
+        if self._event_loop is not None:
+            self._event_loop.join()
+            self._event_loop = None
 
     def acquire(self) -> None:
         """Explicitly acquire a lock on the device for the current thread."""
@@ -169,9 +169,9 @@ class SDPDevice(Device):
                 for watcher in self._config.watcher():
                     LOG.info('watcher %s wake-up, deleting %s',
                              type(watcher).__name__, self._deleting)
-                    if self._deleting:
-                        break
                     with self._hold_lock():
+                        if self._deleting:
+                            break
                         self._watcher = watcher
                         self._do_transaction(watcher)
             except Exception as e:

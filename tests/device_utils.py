@@ -30,6 +30,7 @@ def update_attributes(device, wait=True) -> None:
         device.update_attributes()
     device.flush_update_queue()
 
+
 def init_device(devices, name: str, wipe_config_db: Callable):
     device = devices.get_device(name)
 

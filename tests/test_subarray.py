@@ -8,6 +8,7 @@
 
 import os
 import json
+
 import tango
 
 from ska_telmodel.sdp.schema import get_sdp_receive_addresses_schema
@@ -74,11 +75,10 @@ def set_subarray_device_state(subarray_device, state: str):
 
     """
     # Set the device state in the config DB
+    subarray_device.acquire()
     set_state_and_obs_state(state, 'EMPTY')
-
-    if not event_loop.FEATURE_EVENT_LOOP.is_active():
-        # Update device attributes
-        subarray_device.update_attributes()
+    device_utils.update_attributes(subarray_device)
+    subarray_device.release()
 
     # Check that state has been set correctly
     assert subarray_device.state() == tango.DevState.names[state]
@@ -123,15 +123,28 @@ def call_command(subarray_device, command):
     config_str = read_command_argument(command)
     command_func(config_str)
 
+    #if command == 'AssignResources':
+        # Create the PB states, including the receive addresses for the receive
+        # workflow, which would be done by the PC and workflows
+    #    subarray_device.acquire()
+    #    create_pb_states()
+    #    subarray_device.release()
+
+    # Update the device attributes.
+    device_utils.update_attributes(subarray_device, wait=False)
+
+    subarray_device.acquire()
     if command == 'AssignResources':
         # Create the PB states, including the receive addresses for the receive
         # workflow, which would be done by the PC and workflows
-        subarray_device.acquire()
         create_pb_states()
-        subarray_device.release()
+        wait = True
+    else:
+        wait = False
 
-    # Update the device attributes (does nothing if event loop active).
-    device_utils.update_attributes(subarray_device, wait=False)
+    # Update the device attributes.
+    device_utils.update_attributes(subarray_device, wait=wait)
+    subarray_device.release()
 
 
 # -----------------------------------------------------------------------------

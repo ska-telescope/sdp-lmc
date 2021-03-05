@@ -11,6 +11,7 @@ from tango import AttrWriteType
 from tango.server import Device, attribute
 
 from ska_sdp_config.config import Transaction
+from ska_sdp_lmc.util import is_test_env
 from . import release
 from .event_loop import new_event_loop
 from .exceptions import raise_command_not_allowed
@@ -51,6 +52,7 @@ class SDPDevice(Device):
         self._deleting = False
         self._watcher = None
         self._event_loop = None
+        self._in_command = False
         self._update_queue = collections.deque()
 
     def delete_device(self):
@@ -100,7 +102,14 @@ class SDPDevice(Device):
 
     def _schedule_update(self, updater: Callable, *args):
         def f(): updater(*args)
-        self._update_queue.append(f)
+
+        # The different behaviour for a test environment is not great.
+        # Avoiding a deadlock with Tango monitor.
+        # There may be a scenario where this can fail.
+        if is_test_env() or self._in_command:
+            self._update_queue.append(f)
+        else:
+            f()
 
     # ---------------
     # These are exposed as commands to be used by tests.

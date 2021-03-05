@@ -123,13 +123,6 @@ def call_command(subarray_device, command):
     config_str = read_command_argument(command)
     command_func(config_str)
 
-    #if command == 'AssignResources':
-        # Create the PB states, including the receive addresses for the receive
-        # workflow, which would be done by the PC and workflows
-    #    subarray_device.acquire()
-    #    create_pb_states()
-    #    subarray_device.release()
-
     # Update the device attributes.
     device_utils.update_attributes(subarray_device, wait=False)
 

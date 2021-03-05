@@ -40,6 +40,11 @@ LOG.addFilter(_CallerFilter(
     match=lambda f: any([text in f.filename for text in ('lmc', 'tests')])))
 
 
+def is_test_env() -> bool:
+    """Is the environment a test one?"""
+    return 'pytest' in sys.modules
+
+
 def terminate(signame, frame):
     """Signal handler to exit gracefully."""
     # pylint: disable=unused-argument

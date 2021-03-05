@@ -51,8 +51,10 @@ def command_transaction(argdesc: Optional[str] = None):
             # thread fail while a command is executing, so issue them afterwards.
             with transaction(name, params, logger=LOG) as txn_id:
                 with log_transaction_id(txn_id):
+                    self._in_command = True
                     ret = self._event_loop.do(do_command, name)
                     self.flush_update_queue()
+                    self._in_command = False
 
             return ret
 

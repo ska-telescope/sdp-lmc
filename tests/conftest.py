@@ -10,10 +10,10 @@ from ska_sdp_lmc import SDPMaster, SDPSubarray, event_loop, base_config, tango_l
 
 # Use the config DB memory backend in the devices. This will be overridden if
 # the FEATURE_CONFIG_DB environment variable is set to 1.
-base_config.FEATURE_CONFIG_DB.set_default(False)
+base_config.FEATURE_CONFIG_DB.set_default(True)
 # Disable the event loop in the devices. This will be overridden if the
 # FEATURE_EVENT_LOOP environment variable is set to 1.
-event_loop.FEATURE_EVENT_LOOP.set_default(False)
+event_loop.FEATURE_EVENT_LOOP.set_default(True)
 # Disable the tango logging service handler. This will be overridden if the
 # FEATURE_TANGO_LOGGER environment variable is set to 1.
 tango_logging.FEATURE_TANGO_LOGGER.set_default(False)

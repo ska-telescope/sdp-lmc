@@ -2,7 +2,6 @@
 import collections
 import contextlib
 import enum
-import sys
 import threading
 import traceback
 from typing import Callable
@@ -104,7 +103,7 @@ class SDPDevice(Device):
         def f(): updater(*args)
 
         # The different behaviour for a test environment is not great.
-        # Avoiding a deadlock with Tango monitor.
+        # Avoiding a deadlock with the Tango monitor.
         # There may be a scenario where this can fail.
         if is_test_env() or self._in_command:
             self._update_queue.append(f)
@@ -185,7 +184,7 @@ class SDPDevice(Device):
                         self._do_transaction(watcher)
             except Exception as e:
                 LOG.warning('Exception: %s', e)
-                traceback.print_tb(*sys.exc_info())
+                traceback.print_exc()
             finally:
                 self._watcher = None
             LOG.info('Exit watcher loop')

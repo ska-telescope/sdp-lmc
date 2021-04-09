@@ -52,22 +52,7 @@ def master_device(devices):
     return device
 
 
-# ----------
-# When steps
-# ----------
-
-@when('the device is initialised')
-def initialise_device():
-    """Initialise the device.
-
-    This function does nothing because the 'given' function initialises the
-    device, but a dummy 'when' clause is needed for some of the tests.
-
-    """
-
-
-@when(parsers.parse('the state is {initial_state:S}'))
-@when('the state is <initial_state>')
+@given('the state is <initial_state>')
 def set_device_state(master_device, initial_state):
     """Set the device state.
 
@@ -85,7 +70,10 @@ def set_device_state(master_device, initial_state):
     assert master_device.state() == tango.DevState.names[initial_state]
 
 
-@when(parsers.parse('I call {command:S}'))
+# ----------
+# When steps
+# ----------
+
 @when('I call <command>')
 def command(master_device, command):
     """Call the device commands.

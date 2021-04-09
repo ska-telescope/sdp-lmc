@@ -10,7 +10,6 @@ Feature: SDP Subarray Device
 	@XTP-119 @XTP-118 @Current
 	Scenario: Device is initialised in the correct state
 		Given I have an SDPSubarray device
-		When the device is initialised
 		Then the state should be OFF
 		And obsState should be EMPTY
 		And adminMode should be ONLINE
@@ -22,7 +21,6 @@ Feature: SDP Subarray Device
 	@XTP-969 @XTP-118 @Current
 	Scenario Outline: Command is present and has correct input and output types
 		Given I have an SDPSubarray device
-		When the device is initialised
 		Then the input type of <command> should be <input_type>
 		And the output type of <command> should be <output_type>
 
@@ -45,7 +43,7 @@ Feature: SDP Subarray Device
 	@XTP-949 @XTP-118 @Current
 	Scenario Outline: Command is rejected when the state is OFF
 		Given I have an SDPSubarray device
-		When the state is OFF
+		And the state is OFF
 		Then calling <command> should raise tango.DevFailed
 
 		Examples:
@@ -66,8 +64,8 @@ Feature: SDP Subarray Device
 	@XTP-917 @XTP-118 @Current
 	Scenario: On command succeeds
 		Given I have an SDPSubarray device
-		When the state is OFF
-		And I call On
+		And the state is OFF
+		When I call On
 		Then the state should be ON
 		And obsState should be EMPTY
 		And the log should contain a transaction ID
@@ -77,8 +75,8 @@ Feature: SDP Subarray Device
 	@XTP-918 @XTP-118 @Current
 	Scenario Outline: Off command succeeds
 		Given I have an SDPSubarray device
-		When obsState is <initial_obs_state>
-		And I call Off
+		And obsState is <initial_obs_state>
+		When I call Off
 		Then the state should be OFF
 		And obsState should be EMPTY
 		And the log should contain a transaction ID
@@ -102,8 +100,8 @@ Feature: SDP Subarray Device
 	@XTP-971 @XTP-118 @Current
 	Scenario Outline: Command succeeds in allowed obsState
 		Given I have an SDPSubarray device
-		When obsState is <initial_obs_state>
-		And I call <command>
+		And obsState is <initial_obs_state>
+		When I call <command>
 		Then obsState should be <final_obs_state>
 		And the log should contain a transaction ID
 
@@ -131,7 +129,7 @@ Feature: SDP Subarray Device
 	@XTP-972 @XTP-118 @Current
 	Scenario Outline: Command is rejected in disallowed obsState
 		Given I have an SDPSubarray device
-		When obsState is <initial_obs_state>
+		And obsState is <initial_obs_state>
 		Then calling <command> should raise tango.DevFailed
 
 		Examples:
@@ -225,7 +223,7 @@ Feature: SDP Subarray Device
 	@XTP-965 @XTP-118 @Current
 	Scenario Outline: Command is rejected with an invalid JSON configuration
 		Given I have an SDPSubarray device
-		When obsState is <initial_obs_state>
+		And obsState is <initial_obs_state>
 		Then calling <command> with an invalid JSON configuration should raise tango.DevFailed
 
 		Examples:
@@ -240,8 +238,8 @@ Feature: SDP Subarray Device
 	#Commands that take a JSON configuration string are accepted without an interface value
 	Scenario Outline: Command is accepted without an interface value in JSON configuration
 		Given I have an SDPSubarray device
-		When obsState is <initial_obs_state>
-		And I call <command> without an interface value in the JSON configuration
+		And obsState is <initial_obs_state>
+		When I call <command> without an interface value in the JSON configuration
 		Then obsState should be <final_obs_state>
 
 		Examples:
@@ -255,8 +253,8 @@ Feature: SDP Subarray Device
 	@XTP-120 @XTP-118 @Current
 	Scenario: AssignResources command configures processing blocks and sets receive addresses
 		Given I have an SDPSubarray device
-		When obsState is EMPTY
-		And I call AssignResources
+		And obsState is EMPTY
+		When I call AssignResources
 		Then the processing blocks should be in the config DB
 		And receiveAddresses should have the expected value
 
@@ -265,6 +263,6 @@ Feature: SDP Subarray Device
 	@XTP-122 @XTP-118 @Current
 	Scenario: ReleaseResources command clears receive addresses
 		Given I have an SDPSubarray device
-		When obsState is IDLE
-		And I call ReleaseResources
+		And obsState is IDLE
+		When I call ReleaseResources
 		Then receiveAddresses should be an empty JSON object

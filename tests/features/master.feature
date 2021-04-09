@@ -2,15 +2,14 @@ Feature: SDP Master Device
 
     Scenario: Device is initialised in the correct state
         Given I have an SDPMaster device
-        When the device is initialised
         Then the state should be STANDBY
         And healthState should be OK
         And the log should not contain a transaction ID
 
     Scenario Outline: Command succeeds in allowed state
         Given I have an SDPMaster device
-        When the state is <initial_state>
-        And I call <command>
+        And the state is <initial_state>
+        When I call <command>
         Then the state should be <final_state>
         And the log should contain a transaction ID
 
@@ -31,7 +30,7 @@ Feature: SDP Master Device
 
     Scenario Outline: Command is rejected in disallowed state
         Given I have an SDPMaster device
-        When the state is <initial_state>
+        And the state is <initial_state>
         Then calling <command> should raise tango.DevFailed
 
         Examples:

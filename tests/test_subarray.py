@@ -66,21 +66,8 @@ def subarray_device(devices):
     return device
 
 
-# -----------------------------------------------------------------------------
-# When steps: describe an event or action
-# -----------------------------------------------------------------------------
-
-@when('the device is initialised')
-def init_device():
-    """Initialise the subarray device.
-
-    This function does nothing because the 'given' function initialises the
-    device, but a dummy 'when' clause is needed for some of the tests.
-
-    """
-
-
-@when(parsers.parse('the state is {state:S}'))
+@given(parsers.parse('the state is {state:S}'))
+@given('the state is <initial_state>')
 def set_subarray_device_state(subarray_device, state: str):
     """Set the device state to the specified value.
 
@@ -100,8 +87,8 @@ def set_subarray_device_state(subarray_device, state: str):
     assert subarray_device.state() == tango.DevState.names[state]
 
 
-@when(parsers.parse('obsState is {initial_obs_state:S}'))
-@when('obsState is <initial_obs_state>')
+@given(parsers.parse('obsState is {initial_obs_state:S}'))
+@given('obsState is <initial_obs_state>')
 def set_subarray_device_obstate(subarray_device, initial_obs_state: str):
     """Set the obsState to the specified value.
 
@@ -120,6 +107,10 @@ def set_subarray_device_obstate(subarray_device, initial_obs_state: str):
     # Check obsState has been set correctly
     assert subarray_device.ObsState == ObsState[initial_obs_state]
 
+
+# -----------------------------------------------------------------------------
+# When steps: describe an event or action
+# -----------------------------------------------------------------------------
 
 @when(parsers.parse('I call {command:S}'))
 @when('I call <command>')

@@ -1,7 +1,6 @@
 """SDP Tango device base class module."""
 
 import enum
-import logging
 import threading
 
 from tango import AttrWriteType, EnsureOmniThread
@@ -11,8 +10,9 @@ from ska_sdp_config.config import Transaction
 from . import release
 from .feature_toggle import FeatureToggle
 from .exceptions import raise_command_not_allowed
+from .tango_logging import get_logger
 
-LOG = logging.getLogger('ska_sdp_lmc')
+LOG = get_logger()
 FEATURE_EVENT_LOOP = FeatureToggle('event_loop', True)
 
 

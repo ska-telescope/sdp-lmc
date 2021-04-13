@@ -10,9 +10,10 @@ import ska_sdp_config
 from ska_telmodel.schema import validate
 from ska_telmodel.sdp.version import SDP_ASSIGNRES, SDP_CONFIG
 from .exceptions import raise_command_failed
+from .tango_logging import get_logger
 
 MSG_VALIDATION_FAILED = 'Configuration validation failed'
-LOG = logging.getLogger('ska_sdp_config')
+LOG = get_logger()
 SCHEMA_VERSION = '0.2'
 
 

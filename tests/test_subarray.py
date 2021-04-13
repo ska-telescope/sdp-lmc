@@ -17,15 +17,15 @@ import pytest
 from pytest_bdd import (given, parsers, scenarios, then, when)
 
 import ska_sdp_config
-from ska_sdp_lmc import (AdminMode, HealthState, ObsState,
-                         devices_config, tango_logging)
-from . import test_logging
 
-CONFIG_DB_CLIENT = devices_config.new_config_db_client()
+from . import device_utils
+from ska_sdp_lmc import (AdminMode, HealthState, ObsState,
+                         base_config, tango_logging)
+
+CONFIG_DB_CLIENT = base_config.new_config_db_client()
 SUBARRAY_ID = '01'
 RECEIVE_WORKFLOWS = ['test_receive_addresses']
 DEVICE_NAME = 'test_sdp/elt/subarray_1'
-LOG_LIST = test_logging.ListHandler()
 SCHEMA_VERSION = '0.2'
 
 # -----------------------------------------------------------------------------
@@ -47,23 +47,7 @@ def subarray_device(devices):
     :param devices: the devices in a MultiDeviceTestContext
 
     """
-    device = devices.get_device(DEVICE_NAME)
-
-    # Wipe the config DB
-    wipe_config_db()
-
-    # Initialise the device
-    device.Init()
-
-    # Configure logging to be captured
-    LOG_LIST.list.clear()
-    tango_logging.configure(device, device_name=DEVICE_NAME, handlers=[LOG_LIST])
-    tango_logging.set_level(tango.LogLevel.LOG_DEBUG)
-
-    # Update the device attributes
-    device.update_attributes()
-
-    return device
+    return device_utils.init_device(devices, DEVICE_NAME, wipe_config_db)
 
 
 @given(parsers.parse('the state is {state:S}'))
@@ -353,13 +337,14 @@ def receive_addresses_empty(subarray_device):
 @then('the log should not contain a transaction ID')
 def log_contains_no_transaction_id():
     """Check that the log does not contain a transaction ID."""
-    assert 'txn-' not in LOG_LIST.get_last_tag()
+    assert not device_utils.LOG_LIST.text_in_tag('txn-', last=5)
 
 
 @then('the log should contain a transaction ID')
 def log_contains_transaction_id():
     """Check that the log does contain a transaction ID."""
-    assert 'txn-' in LOG_LIST.get_last_tag()
+    # Allow some scope for some additional messages afterwards.
+    assert device_utils.LOG_LIST.text_in_tag('txn-', last=5)
 
 
 # -----------------------------------------------------------------------------

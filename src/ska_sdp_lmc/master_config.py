@@ -4,7 +4,7 @@ from typing import Any, Optional
 
 from tango import DevState
 
-from .devices_config import new_config_db_client
+from .base_config import new_config_db_client
 
 
 class MasterConfig:

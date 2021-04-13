@@ -2,18 +2,19 @@
 
 # pylint: disable=redefined-outer-name
 # pylint: disable=duplicate-code
+import logging
 
 import pytest
 from pytest_bdd import (given, parsers, scenarios, then, when)
 
 import tango
 
-from ska_sdp_lmc import HealthState, tango_logging, devices_config
-from . import test_logging
+from . import device_utils
+from ska_sdp_lmc import HealthState, tango_logging, base_config
 
 DEVICE_NAME = 'test_sdp/elt/master'
-CONFIG_DB_CLIENT = devices_config.new_config_db_client()
-LOG_LIST = test_logging.ListHandler()
+CONFIG_DB_CLIENT = base_config.new_config_db_client()
+LOG = tango_logging.get_logger()
 
 # -------------------------------
 # Get scenarios from feature file
@@ -33,23 +34,7 @@ def master_device(devices):
     :param devices: the devices in a MultiDeviceTestContext
 
     """
-    device = devices.get_device(DEVICE_NAME)
-
-    # Wipe the config DB
-    wipe_config_db()
-
-    # Initialise the device
-    device.Init()
-
-    # Configure logging to be captured
-    LOG_LIST.list.clear()
-    tango_logging.configure(device, device_name=DEVICE_NAME, handlers=[LOG_LIST])
-    tango_logging.set_level(tango.LogLevel.LOG_DEBUG)
-
-    # Update the device attributes
-    device.update_attributes()
-
-    return device
+    return device_utils.init_device(devices, DEVICE_NAME, wipe_config_db)
 
 
 @given('the state is <initial_state>')
@@ -141,13 +126,14 @@ def command_raises_dev_failed_error(master_device, command):
 @then('the log should not contain a transaction ID')
 def log_contains_no_transaction_id():
     """Check that the log does not contain a transaction ID."""
-    assert 'txn-' not in LOG_LIST.get_last_tag()
+    assert not device_utils.LOG_LIST.text_in_tag('txn-', last=5)
 
 
 @then('the log should contain a transaction ID')
 def log_contains_transaction_id():
     """Check that the log contains a transaction ID."""
-    assert 'txn-' in LOG_LIST.get_last_tag()
+    # Allow some scope for some additional messages afterwards.
+    assert device_utils.LOG_LIST.text_in_tag('txn-', last=5)
 
 
 # -----------------------------------------------------------------------------

@@ -45,13 +45,13 @@ def set_device_state(master_device, initial_state):
     :param state_value: desired device state
 
     """
-    # Set the device state in the config DB
+    # Set the device state in the config DB.
     set_state(initial_state)
 
-    # Update device attributes
-    master_device.update_attributes()
+    # Wait for the device state to update.
+    device_utils.wait_for_state(master_device, initial_state)
 
-    # Check that state has been set correctly
+    # Check that state has been set correctly.
     assert master_device.state() == tango.DevState.names[initial_state]
 
 
@@ -74,8 +74,8 @@ def command(master_device, command):
     command_func = getattr(master_device, command)
     # Call the command
     command_func()
-    # Update the device attributes
-    master_device.update_attributes()
+    # Wait for the device state to update.
+    device_utils.wait_for_state_change(master_device)
 
 
 # ----------

@@ -62,10 +62,11 @@ def set_subarray_device_state(subarray_device, state: str):
 
     """
     # Set the device state in the config DB
-    set_state_and_obs_state(state, 'EMPTY')
+    set_state_and_obs_state(state, "EMPTY")
 
-    # Update device attributes
-    subarray_device.update_attributes()
+    # Wait for the device state to update.
+    device_utils.wait_for_values(subarray_device,
+                                 ["State", "obsState"], [state, str(ObsState.EMPTY.value)])
 
     # Check that state has been set correctly
     assert subarray_device.state() == tango.DevState.names[state]
@@ -83,10 +84,12 @@ def set_subarray_device_obstate(subarray_device, initial_obs_state: str):
 
     """
     # Set the obsState in the config DB
-    set_state_and_obs_state('ON', initial_obs_state)
+    state = "ON"
+    set_state_and_obs_state(state, initial_obs_state)
 
-    # Update the device attributes
-    subarray_device.update_attributes()
+    # Wait for the device state to update.
+    device_utils.wait_for_values(subarray_device, ["State", "obsState"],
+                                 [state, str(ObsState[initial_obs_state].value)])
 
     # Check obsState has been set correctly
     assert subarray_device.ObsState == ObsState[initial_obs_state]
@@ -127,8 +130,8 @@ def call_command(subarray_device, command):
         # workflow, which would be done by the PC and workflows
         create_pb_states()
 
-    # Update the device attributes
-    subarray_device.update_attributes()
+    # Wait for the device state to update.
+    device_utils.wait_for_changes(subarray_device, ["State", "obsState"])
 
 
 @when('I call <command> without an interface value in the JSON configuration')
@@ -155,8 +158,8 @@ def call_command_without_interface(subarray_device, command):
         # workflow, which would be done by the PC and workflows
         create_pb_states()
 
-    # Update the device attributes
-    subarray_device.update_attributes()
+    # Wait for the device state to update.
+    device_utils.wait_for_changes(subarray_device, ["State", "obsState"])
 
 
 # -----------------------------------------------------------------------------

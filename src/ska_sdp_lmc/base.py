@@ -3,6 +3,7 @@
 import enum
 import threading
 
+import tango
 from tango import AttrWriteType, EnsureOmniThread
 from tango.server import Device, command, attribute
 
@@ -14,6 +15,7 @@ from .tango_logging import get_logger
 
 LOG = get_logger()
 FEATURE_EVENT_LOOP = FeatureToggle('event_loop', True)
+tango.ApiUtil.instance().set_asynch_cb_sub_model(tango.cb_sub_model.PUSH_CALLBACK)
 
 
 class SDPDevice(Device):

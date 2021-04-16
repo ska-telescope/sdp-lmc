@@ -4,9 +4,9 @@
 
 import pytest
 
-from tango import EventType, EventData
 from tango.test_context import MultiDeviceTestContext
 
+from . import device_utils
 from ska_sdp_lmc import SDPMaster, SDPSubarray, base, base_config, tango_logging
 
 LOG = tango_logging.get_logger()
@@ -35,14 +35,7 @@ device_info = [
 ]
 
 
-def callback(ed: EventData):
-    s = ed.attr_name.rfind('/') + 1
-    e = ed.attr_name.rfind('#')
-    LOG.info("Change event for %s: %s -> %s", ed.device,
-             ed.attr_name[s:e], ed.attr_value.value)
-
-
-def device_gen(context):
+def device_gen(context: MultiDeviceTestContext):
     """Device generator function."""
     for info in device_info:
         ds = info["devices"]
@@ -58,11 +51,12 @@ def devices():
 
     # Set event callbacks for each device.
     for device in device_gen(context):
-        device.event_id = device.subscribe_event('State', EventType.CHANGE_EVENT, callback)
+        device_utils.Monitor(device, 'State')
+        if "subarray" in device.dev_name():
+            device_utils.Monitor(device, 'obsState')
 
     yield context
 
     # Remove callbacks otherwise doesn't shut down properly.
-    for device in device_gen(context):
-        device.unsubscribe_event(device.event_id)
+    device_utils.Monitor.close_all()
     context.stop()

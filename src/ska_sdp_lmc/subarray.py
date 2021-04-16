@@ -491,6 +491,7 @@ class SDPSubarray(SDPDevice):
 
     def _set_obs_state(self, value):
         """Set obsState and push a change event."""
+        LOG.info("obsState %s -> %s", self._obs_state, value)
         if self._obs_state != value:
             LOG.info('Setting obsState to %s', value.name)
             self._obs_state = value
@@ -566,6 +567,7 @@ class SDPSubarray(SDPDevice):
                     obs_state = ObsState.IDLE
             else:
                 obs_state = subarray.obs_state_target
+            LOG.info("setting obsState to %s", obs_state)
             self._set_obs_state(obs_state)
 
     # ---------------

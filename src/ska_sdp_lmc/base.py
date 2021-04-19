@@ -71,8 +71,9 @@ class SDPDevice(Device):
 
     def _set_state(self, value):
         """Set device state."""
-        if self.get_state() != value:
-            LOG.info('Setting device state to %s', value.name)
+        state = self.get_state()
+        if state != value:
+            LOG.info('Setting device state %s -> %s', state, value.name)
             self.set_state(value)
             self.push_change_event('State', self.get_state())
 

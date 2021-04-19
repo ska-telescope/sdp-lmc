@@ -41,7 +41,7 @@ class SDPSubarray(SDPDevice):
         label='Observing state',
         dtype=ObsState,
         access=AttrWriteType.READ,
-        doc='The device observing state.'
+        doc='The device observing state.',
     )
 
     adminMode = attribute(
@@ -95,6 +95,7 @@ class SDPSubarray(SDPDevice):
 
         # Enable change events on attributes
         self.set_change_event('obsState', True)
+        self.obsState.set_data_ready_event(True)
         self.set_change_event('adminMode', True)
         self.set_change_event('healthState', True)
         self.set_change_event('receiveAddresses', True)
@@ -496,6 +497,8 @@ class SDPSubarray(SDPDevice):
             LOG.info('Setting obsState to %s', value.name)
             self._obs_state = value
             self.push_change_event('obsState', self._obs_state)
+        # This needs the counter argument even though the doc says it doesn't.
+        self.push_data_ready_event('obsState', 0)
 
     def _set_admin_mode(self, value):
         """Set adminMode and push a change event."""

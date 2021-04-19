@@ -27,6 +27,7 @@ SUBARRAY_ID = '01'
 RECEIVE_WORKFLOWS = ['test_receive_addresses']
 DEVICE_NAME = 'test_sdp/elt/subarray_1'
 SCHEMA_VERSION = '0.2'
+LOG = tango_logging.get_logger()
 
 # -----------------------------------------------------------------------------
 # Scenarios : Specify what we want the software to do
@@ -47,7 +48,11 @@ def subarray_device(devices):
     :param devices: the devices in a MultiDeviceTestContext
 
     """
-    return device_utils.init_device(devices, DEVICE_NAME, wipe_config_db)
+    device = device_utils.init_device(devices, DEVICE_NAME, wipe_config_db)
+    device_utils.Monitor.close_all()
+    device_utils.Monitor(device, 'State')
+    device_utils.Monitor(device, 'obsState')
+    return device
 
 
 @given(parsers.parse('the state is {state:S}'))
@@ -65,6 +70,7 @@ def set_subarray_device_state(subarray_device, state: str):
     set_state_and_obs_state(state, "EMPTY")
 
     # Wait for the device state to update.
+    LOG.info("Set state: wait for updates")
     device_utils.wait_for_values(subarray_device,
                                  ["State", "obsState"], [state, str(ObsState.EMPTY.value)])
 
@@ -88,6 +94,7 @@ def set_subarray_device_obstate(subarray_device, initial_obs_state: str):
     set_state_and_obs_state(state, initial_obs_state)
 
     # Wait for the device state to update.
+    LOG.info("Set obsState: wait for updates")
     device_utils.wait_for_values(subarray_device, ["State", "obsState"],
                                  [state, str(ObsState[initial_obs_state].value)])
 
@@ -131,7 +138,8 @@ def call_command(subarray_device, command):
         create_pb_states()
 
     # Wait for the device state to update.
-    device_utils.wait_for_changes(subarray_device, ["State", "obsState"])
+    LOG.info("Called command: wait for changes")
+    device_utils.wait_for_changes(subarray_device, ["obsState"])
 
 
 @when('I call <command> without an interface value in the JSON configuration')
@@ -159,7 +167,8 @@ def call_command_without_interface(subarray_device, command):
         create_pb_states()
 
     # Wait for the device state to update.
-    device_utils.wait_for_changes(subarray_device, ["State", "obsState"])
+    LOG.info("Called command without value: wait for changes")
+    device_utils.wait_for_changes(subarray_device, ["obsState"])
 
 
 # -----------------------------------------------------------------------------
@@ -340,14 +349,14 @@ def receive_addresses_empty(subarray_device):
 @then('the log should not contain a transaction ID')
 def log_contains_no_transaction_id():
     """Check that the log does not contain a transaction ID."""
-    assert not device_utils.LOG_LIST.text_in_tag('txn-', last=5)
+    assert not device_utils.LOG_LIST.text_in_tag('txn-', last=10)
 
 
 @then('the log should contain a transaction ID')
 def log_contains_transaction_id():
     """Check that the log does contain a transaction ID."""
     # Allow some scope for some additional messages afterwards.
-    assert device_utils.LOG_LIST.text_in_tag('txn-', last=5)
+    assert device_utils.LOG_LIST.text_in_tag('txn-', last=10)
 
 
 # -----------------------------------------------------------------------------

@@ -2,7 +2,7 @@
 import time
 from typing import Callable, Sequence, List
 
-from tango import EventType, EventData, LogLevel
+from tango import EventType, EventData, LogLevel, DataReadyEventData
 
 from . import test_logging
 from ska_sdp_lmc import tango_logging, base
@@ -34,15 +34,25 @@ class Monitor:
         self.attribute = attribute
         self.value = ""
         self.changed = False
-        self.event_id = None
+        # self.event_id = None
         key = self.to_key(device, attribute)
         Monitor._instances[key] = self
         LOG.info("Subscribing to change events on %s", key)
-        self.event_id = device.subscribe_event(attribute, EventType.CHANGE_EVENT, self._callback)
+        self.change_id = device.subscribe_event(attribute, EventType.CHANGE_EVENT,
+                                                self._change)
+        if self.attribute != "State":
+            # I can't find a way to do this for state.
+            self.ready_id = device.subscribe_event(attribute, EventType.DATA_READY_EVENT,
+                                                   self._ready)
+        else:
+            self.ready_id = None
 
     @staticmethod
     def to_key(device, attribute: str) -> str:
         return ":".join((device.dev_name(), attribute))
+
+    def get_key(self):
+        return Monitor.to_key(self.device, self.attribute)
 
     @staticmethod
     def get_instance(device, attribute: str) -> "Monitor":
@@ -52,15 +62,20 @@ class Monitor:
     def get_state_instance(device) -> "Monitor":
         return Monitor.get_instance(device, 'State')
 
-    def _callback(self, ed: EventData):
-        LOG.info("Callback for %s", self)
-        print(ed)
-        self.value = str(ed.attr_value.value)
-        self.changed = True
+    def _event(self, event_type: str, ed):
         s = ed.attr_name.rfind('/') + 1
         e = ed.attr_name.rfind('#')
-        LOG.info("Change event for %s: %s -> %s", ed.device,
+        LOG.info("%s event for %s: %s -> %s", event_type, ed.device,
                  ed.attr_name[s:e], self.value)
+
+    def _change(self, ed: EventData):
+        self.value = str(ed.attr_value.value)
+        self.changed = True
+        self._event("Change", ed)
+
+    def _ready(self, ed: DataReadyEventData):
+        self.changed = True
+        self._event("Ready", ed)
 
     def _check_for_change(self):
         changed = self.changed
@@ -86,16 +101,18 @@ class Monitor:
         return self.wait_for(self._check_for_change, timeout, sleep)
 
     def close(self):
-        if self.event_id is not None:
-            self.device.unsubscribe_event(self.event_id)
+        self.device.unsubscribe_event(self.change_id)
+        if self.ready_id is not None:
+            self.device.unsubscribe_event(self.ready_id)
+        Monitor._instances.pop(self.get_key())
 
     @staticmethod
     def close_all():
-        for instance in Monitor._instances.values():
+        for instance in Monitor._instances.copy().values():
             instance.close()
 
     def __repr__(self):
-        return self.to_key(self.device, self.attribute)
+        return self.get_key()
 
 
 def feature_check(device):
@@ -129,7 +146,7 @@ def wait_for_changes(device, attributes: Sequence[str]) -> None:
 
 def wait_for_values(device, attributes: List[str], values: List[str]) -> None:
     wait_for_multiple(device, attributes, lambda monitors:
-    all([monitors[i].value == values[i] for i in range(len(monitors))]))
+                      all([monitors[i].value == values[i] for i in range(len(monitors))]))
 
 
 def init_device(devices, name: str, wipe_config_db: Callable):

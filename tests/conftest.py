@@ -50,13 +50,13 @@ def devices():
     context.start()
 
     # Set event callbacks for each device.
-    for device in device_gen(context):
-        device_utils.Monitor(device, 'State')
-        if "subarray" in device.dev_name():
-            device_utils.Monitor(device, 'obsState')
+    #for device in device_gen(context):
+    #    device_utils.Monitor(device, 'State')
+    #    if "subarray" in device.dev_name():
+    #        device_utils.Monitor(device, 'obsState')
 
     yield context
 
-    # Remove callbacks otherwise doesn't shut down properly.
+    # Remove any callbacks otherwise doesn't shut down properly.
     device_utils.Monitor.close_all()
     context.stop()

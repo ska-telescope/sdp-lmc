@@ -34,7 +34,10 @@ def master_device(devices):
     :param devices: the devices in a MultiDeviceTestContext
 
     """
-    return device_utils.init_device(devices, DEVICE_NAME, wipe_config_db)
+    device = device_utils.init_device(devices, DEVICE_NAME, wipe_config_db)
+    device_utils.Monitor.close_all()
+    device_utils.Monitor(device, 'State')
+    return device
 
 
 @given('the state is <initial_state>')

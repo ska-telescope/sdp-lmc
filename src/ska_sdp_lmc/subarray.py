@@ -272,7 +272,7 @@ class SDPSubarray(SDPDevice):
             subarray = self._config.subarray(txn)
             subarray.command = 'AssignResources'
             subarray.transaction_id = transaction_id
-            subarray.obs_state_target = ObsState.IDLE
+            subarray.obs_state_target = ObsState.RESOURCING
             subarray.create_sbi_and_pbs(sbi, pbs)
 
     def is_ReleaseResources_allowed(self):

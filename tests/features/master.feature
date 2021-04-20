@@ -31,7 +31,8 @@ Feature: SDP Master Device
     Scenario Outline: Command is rejected in disallowed state
         Given I have an SDPMaster device
         And the state is <initial_state>
-        Then calling <command> should raise tango.DevFailed
+        When I call <command>
+        Then the device should raise tango.DevFailed
 
         Examples:
         | command | initial_state |

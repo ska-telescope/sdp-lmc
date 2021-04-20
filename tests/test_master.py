@@ -2,9 +2,6 @@
 
 # pylint: disable=redefined-outer-name
 # pylint: disable=duplicate-code
-import logging
-
-import pytest
 from pytest_bdd import (given, parsers, scenarios, then, when)
 
 import tango
@@ -70,15 +67,22 @@ def command(master_device, command):
     :param command: name of command to call
 
     """
-    # Check command is present
+    # Check command is present.
     command_list = master_device.get_command_list()
     assert command in command_list
+
     # Get command function
     command_func = getattr(master_device, command)
-    # Call the command
-    command_func()
-    # Wait for the device state to update.
-    device_utils.wait_for_state_change(master_device)
+
+    # Call the command and remember any exception.
+    try:
+        command_func()
+        master_device.exception = None
+
+        # Wait for the device state to update.
+        device_utils.wait_for_state_change(master_device)
+    except tango.DevFailed as e:
+        master_device.exception = e
 
 
 # ----------
@@ -108,22 +112,14 @@ def check_health_state(master_device, health_state):
     assert master_device.healthState == HealthState[health_state]
 
 
-@then(parsers.parse('calling {command:S} should raise tango.DevFailed'))
-@then('calling <command> should raise tango.DevFailed')
-def command_raises_dev_failed_error(master_device, command):
+@then('the device should raise tango.DevFailed')
+def command_raises_dev_failed_error(master_device):
     """Check that calling command raises a tango.DevFailed error.
 
     :param master_device: An SDPMaster device.
-    :param command: the name of the command.
     """
-    # Check command is present
-    command_list = master_device.get_command_list()
-    assert command in command_list
-    # Get command function
-    command_func = getattr(master_device, command)
-    with pytest.raises(tango.DevFailed):
-        # Call the command
-        command_func()
+    e = master_device.exception
+    assert e is not None and isinstance(e, tango.DevFailed)
 
 
 @then('the log should not contain a transaction ID')

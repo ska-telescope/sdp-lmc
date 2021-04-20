@@ -48,13 +48,6 @@ def devices():
     """Start the devices in a MultiDeviceTestContext."""
     context = MultiDeviceTestContext(device_info)
     context.start()
-
-    # Set event callbacks for each device.
-    #for device in device_gen(context):
-    #    device_utils.Monitor(device, 'State')
-    #    if "subarray" in device.dev_name():
-    #        device_utils.Monitor(device, 'obsState')
-
     yield context
 
     # Remove any callbacks otherwise doesn't shut down properly.

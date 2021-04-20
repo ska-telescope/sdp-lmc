@@ -44,7 +44,8 @@ Feature: SDP Subarray Device
 	Scenario Outline: Command is rejected when the state is OFF
 		Given I have an SDPSubarray device
 		And the state is OFF
-		Then calling <command> should raise tango.DevFailed
+		When I call <command>
+		Then the device should raise tango.DevFailed
 
 		Examples:
 		| command          |
@@ -107,7 +108,7 @@ Feature: SDP Subarray Device
 
 		Examples:
 		| command          | initial_obs_state | final_obs_state |
-		| AssignResources  | EMPTY             | IDLE            |
+		| AssignResources  | EMPTY             | RESOURCING      |
 		| ReleaseResources | IDLE              | EMPTY           |
 		| Configure        | IDLE              | READY           |
 		| Configure        | READY             | READY           |
@@ -130,7 +131,8 @@ Feature: SDP Subarray Device
 	Scenario Outline: Command is rejected in disallowed obsState
 		Given I have an SDPSubarray device
 		And obsState is <initial_obs_state>
-		Then calling <command> should raise tango.DevFailed
+		When I call <command>
+		Then the device should raise tango.DevFailed
 
 		Examples:
 		| command          | initial_obs_state |
@@ -224,7 +226,8 @@ Feature: SDP Subarray Device
 	Scenario Outline: Command is rejected with an invalid JSON configuration
 		Given I have an SDPSubarray device
 		And obsState is <initial_obs_state>
-		Then calling <command> with an invalid JSON configuration should raise tango.DevFailed
+		When I call <command> with an invalid JSON configuration
+		Then the device should raise tango.DevFailed
 
 		Examples:
 		| command         | initial_obs_state |
@@ -232,7 +235,6 @@ Feature: SDP Subarray Device
 		| Configure       | IDLE              |
 		| Configure       | READY             |
 		| Scan            | READY             |
-
 
 
 	#Commands that take a JSON configuration string are accepted without an interface value
@@ -244,7 +246,7 @@ Feature: SDP Subarray Device
 
 		Examples:
 		| command         | initial_obs_state | final_obs_state |
-		| AssignResources | EMPTY             | IDLE            |
+		| AssignResources | EMPTY             | RESOURCING      |
 		| Configure       | IDLE              | READY           |
 		| Configure       | READY             | READY           |
 

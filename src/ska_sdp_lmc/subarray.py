@@ -447,7 +447,6 @@ class SDPSubarray(SDPDevice):
             subarray.scan_type = None
             subarray.scan_id = None
 
-
     def is_Restart_allowed(self):
         """Check if the Restart command is allowed."""
         command_name = 'Restart'
@@ -570,7 +569,7 @@ class SDPSubarray(SDPDevice):
                     obs_state = ObsState.IDLE
             else:
                 obs_state = subarray.obs_state_target
-            LOG.info("setting obsState to %s", obs_state)
+
             self._set_obs_state(obs_state)
 
     # ---------------

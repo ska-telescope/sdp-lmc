@@ -126,6 +126,18 @@ Feature: SDP Subarray Device
 		| Restart          | FAULT             | EMPTY           |
 
 
+	#Assign resources transition from intermediate state.
+	Scenario: Receive addresses cause transition to IDLE
+        Given I have an SDPSubarray device
+		And obsState is EMPTY
+
+		When I call AssignResources
+		And the receive processing block writes the receive addresses into its state
+
+        Then obsState should be IDLE
+        And receiveAddresses should have the expected value
+
+
 	#Commands are rejected when called in obsStates where they are not allowed.
 	@XTP-972 @XTP-118 @Current
 	Scenario Outline: Command is rejected in disallowed obsState

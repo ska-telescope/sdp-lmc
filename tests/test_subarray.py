@@ -206,6 +206,27 @@ def call_command_with_invalid_json(subarray_device, command):
         subarray_device.exception = e
 
 
+@when("the receive processing block writes the receive addresses into its state")
+def receive_addresses_written(subarray_device):
+    receive_addresses = read_receive_addresses()
+
+    for txn in CONFIG_DB_CLIENT.txn():
+        subarray = txn.get_subarray(SUBARRAY_ID)
+        subarray['obs_state_target'] = "IDLE"
+        txn.update_subarray(SUBARRAY_ID, subarray)
+
+        pb_list = txn.list_processing_blocks()
+        for pb_id in pb_list:
+            pb = txn.get_processing_block(pb_id)
+            if pb.workflow['id'] in RECEIVE_WORKFLOWS:
+                pb_state = txn.get_processing_block_state(pb_id)
+                pb_state['receive_addresses'] = receive_addresses
+                txn.update_processing_block_state(pb_id, pb_state)
+
+    LOG.info("Wait for transition to idle")
+    device_utils.wait_for_values(subarray_device, ["obsState"], ["IDLE"])
+
+
 # -----------------------------------------------------------------------------
 # Then steps: check the outcome is as expected
 # -----------------------------------------------------------------------------
@@ -341,14 +362,14 @@ def receive_addresses_empty(subarray_device):
 @then('the log should not contain a transaction ID')
 def log_contains_no_transaction_id():
     """Check that the log does not contain a transaction ID."""
-    assert not device_utils.LOG_LIST.text_in_tag('txn-', last=10)
+    assert not device_utils.LOG_LIST.text_in_tag('txn-', last=5)
 
 
 @then('the log should contain a transaction ID')
 def log_contains_transaction_id():
     """Check that the log does contain a transaction ID."""
     # Allow some scope for some additional messages afterwards.
-    assert device_utils.LOG_LIST.text_in_tag('txn-', last=10)
+    assert device_utils.LOG_LIST.text_in_tag('txn-', last=5)
 
 
 # -----------------------------------------------------------------------------

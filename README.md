@@ -21,7 +21,7 @@ or:
 SDPSubarray <instance name> [-v4]
 ```
 
-## Releasing the python package
+## Releasing the Docker Image
 
 When new release is ready:
 

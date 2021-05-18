@@ -5,6 +5,7 @@ workflow:
   rules:
     - if: $CI_MERGE_REQUEST_ID
     - if: $CI_COMMIT_BRANCH
+    - if: $CI_COMMIT_TAG
 
 stages:
   - test
@@ -79,7 +80,6 @@ publish:
   stage: publish
   dependencies:
     - build
-  only: [master]
   variables:
     GIT_VERSION: ${CI_COMMIT_SHORT_SHA}
     PREFIX_BUILD: ${CI_REGISTRY_IMAGE}
@@ -87,6 +87,12 @@ publish:
   image: docker:stable
   services:
     - docker:dind
+  only:
+    variables:
+       - $CI_COMMIT_MESSAGE =~ /^.+$/ # Confirm tag message exists
+       - $CI_COMMIT_TAG =~ /^((([0-9]+)\.([0-9]+)\.([0-9]+)(?:-([0-9a-zA-Z-]+(?:\.[0-9a-zA-Z-]+)*))?)(?:\+([0-9a-zA-Z-]+(?:\.[0-9a-zA-Z-]+)*))?)$/ #Confirm semantic versioning of tag
+  except:
+    - branches
   before_script:
     - apk add make git
     - docker login -u $CI_REGISTRY_USER -p $CI_REGISTRY_PASSWORD $CI_REGISTRY

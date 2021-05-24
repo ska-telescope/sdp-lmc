@@ -6,5 +6,5 @@ lmcbaseclasses >= 0.8
 ska-sdp-config >= 0.2.1
 ska-logging >= 0.3.0
 ska-log-transactions >= 0.1.0
-ska-telescope-model == 0.3.0
+ska-telescope-model
 bumpver

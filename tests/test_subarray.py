@@ -11,7 +11,7 @@ import json
 import tango
 
 from ska_telmodel.schema import validate
-from ska_telmodel.sdp.version import SDP_ASSIGNRES, SDP_CONFIG, SDP_RECVADDRS
+from ska_telmodel.sdp.version import SDP_RECVADDRS_PREFIX
 
 import pytest
 from pytest_bdd import (given, parsers, scenarios, then, when)
@@ -335,7 +335,7 @@ def receive_addresses_expected(subarray_device):
     :param subarray_device: An SDPSubarray device.
 
     """
-    recvaddrs_schema = SDP_RECVADDRS + SCHEMA_VERSION
+    recvaddrs_schema = SDP_RECVADDRS_PREFIX + SCHEMA_VERSION
 
     # Get the expected receive addresses from the data file
     receive_addresses_expected = read_receive_addresses()

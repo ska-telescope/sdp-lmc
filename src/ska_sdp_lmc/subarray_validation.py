@@ -8,7 +8,7 @@ import jsonschema
 import ska_sdp_config
 
 from ska_telmodel.schema import validate
-from ska_telmodel.sdp.version import SDP_ASSIGNRES, SDP_CONFIG
+from ska_telmodel.sdp.version import SDP_ASSIGNRES_PREFIX, SDP_CONFIG_PREFIX
 from .exceptions import raise_command_failed
 
 MSG_VALIDATION_FAILED = 'Configuration validation failed'
@@ -25,7 +25,7 @@ def validate_assign_resources(config_str):
     """
 
     # Validate the configuration string against the JSON schema
-    schema_uri = SDP_ASSIGNRES + SCHEMA_VERSION
+    schema_uri = SDP_ASSIGNRES_PREFIX + SCHEMA_VERSION
     config = validate_json_config(config_str, schema_uri=schema_uri)
 
     if config is None:
@@ -112,7 +112,7 @@ def validate_configure(config_str):
     """
 
     # Validate the configuration string against the JSON schema
-    schema_uri = SDP_CONFIG + SCHEMA_VERSION
+    schema_uri = SDP_CONFIG_PREFIX + SCHEMA_VERSION
     config = validate_json_config(config_str, schema_uri=schema_uri)
 
     if config is None:

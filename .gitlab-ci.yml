@@ -41,9 +41,11 @@ lint:
   image: nexus.engageska-portugal.pt/ska-docker/ska-python-buildenv:latest
   before_script:
     - pip3 install -r requirements.txt -r requirements-test.txt
+    - pip3 install black
   script:
     - pylint --exit-zero --output-format=parseable src/ska_sdp_lmc
     - pylint --exit-zero --output-format=pylint2junit.JunitReporter src/ska_sdp_lmc > linting.xml
+    - black --check .
   after_script:
     - mkdir -p build/reports
     - mv linting.xml build/reports

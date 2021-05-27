@@ -1,0 +1,6 @@
+# To make use of this file, run
+#    git config blame.ignoreRevsFile .git-blame-ignore-revs
+# from the project root directory
+
+# Migrate code style to Black
+6c3541d6dac920b50c9e84c44d2aa369f9c35a6e

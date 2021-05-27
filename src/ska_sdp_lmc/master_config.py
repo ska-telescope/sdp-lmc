@@ -58,10 +58,7 @@ class MasterState:
         """
         master = self._txn.get_master()
         if master is None:
-            master = {
-                'transaction_id': None,
-                'state': state.name
-            }
+            master = {"transaction_id": None, "state": state.name}
             self._txn.create_master(master)
 
     def _get(self, name: str) -> Any:
@@ -90,7 +87,7 @@ class MasterState:
     @property
     def state(self) -> Optional[DevState]:
         """Device state."""
-        value_str = self._get('state')
+        value_str = self._get("state")
         if value_str in DevState.names:
             value = DevState.names[value_str]
         else:
@@ -99,13 +96,13 @@ class MasterState:
 
     @state.setter
     def state(self, state: DevState):
-        self._set('state', state.name)
+        self._set("state", state.name)
 
     @property
     def transaction_id(self) -> str:
         """Transaction ID."""
-        return self._get('transaction_id')
+        return self._get("transaction_id")
 
     @transaction_id.setter
     def transaction_id(self, transaction_id: str):
-        self._set('transaction_id', transaction_id)
+        self._set("transaction_id", transaction_id)

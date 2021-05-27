@@ -11,15 +11,15 @@ from tango.server import attribute, run
 from ska_sdp_config.config import Transaction
 
 # Note that relative imports are incompatible with main.
-from ska_sdp_lmc.tango_logging import (
-    get_logger, init_logger, log_transaction_id
-)
+from ska_sdp_lmc.tango_logging import get_logger, init_logger, log_transaction_id
 from ska_sdp_lmc.attributes import AdminMode, HealthState, ObsState
 from ska_sdp_lmc.base import SDPDevice
 from ska_sdp_lmc.commands import command_transaction
 from ska_sdp_lmc.subarray_config import SubarrayConfig
 from ska_sdp_lmc.subarray_validation import (
-    validate_assign_resources, validate_configure, validate_scan
+    validate_assign_resources,
+    validate_configure,
+    validate_scan,
 )
 from ska_sdp_lmc.util import terminate, check_args
 
@@ -38,47 +38,46 @@ class SDPSubarray(SDPDevice):
     # ----------
 
     obsState = attribute(
-        label='Observing state',
+        label="Observing state",
         dtype=ObsState,
         access=AttrWriteType.READ,
-        doc='The device observing state.'
+        doc="The device observing state.",
     )
 
     adminMode = attribute(
-        label='Administration mode',
+        label="Administration mode",
         dtype=AdminMode,
         access=AttrWriteType.READ_WRITE,
-        doc='The device administration mode.'
+        doc="The device administration mode.",
     )
 
     healthState = attribute(
-        label='Health state',
+        label="Health state",
         dtype=HealthState,
         access=AttrWriteType.READ,
-        doc='Subarray device health state.'
+        doc="Subarray device health state.",
     )
 
     receiveAddresses = attribute(
-        label='Receive addresses',
+        label="Receive addresses",
         dtype=str,
         access=AttrWriteType.READ,
-        doc='Host addresses for the visibility receive workflow as a '
-            'JSON string.'
+        doc="Host addresses for the visibility receive workflow as a JSON string.",
     )
 
     scanType = attribute(
-        label='Scan type',
+        label="Scan type",
         dtype=str,
         access=AttrWriteType.READ,
-        doc='Scan type.'
+        doc="Scan type.",
     )
 
     scanID = attribute(
-        label='Scan ID',
+        label="Scan ID",
         dtype=int,
         access=AttrWriteType.READ,
-        doc='Scan ID.',
-        abs_change=1
+        doc="Scan ID.",
+        abs_change=1,
     )
 
     # ---------------
@@ -89,24 +88,24 @@ class SDPSubarray(SDPDevice):
         """Initialise the device."""
         init_logger(self)
 
-        LOG.info('SDP Subarray initialising')
+        LOG.info("SDP Subarray initialising")
         super().init_device()
         self.set_state(DevState.INIT)
 
         # Enable change events on attributes
-        self.set_change_event('obsState', True)
-        self.set_change_event('adminMode', True)
-        self.set_change_event('healthState', True)
-        self.set_change_event('receiveAddresses', True)
-        self.set_change_event('scanType', True)
-        self.set_change_event('scanID', True)
+        self.set_change_event("obsState", True)
+        self.set_change_event("adminMode", True)
+        self.set_change_event("healthState", True)
+        self.set_change_event("receiveAddresses", True)
+        self.set_change_event("scanType", True)
+        self.set_change_event("scanID", True)
 
         # Initialise private values of attributes
         self._obs_state = None
         self._admin_mode = None
         self._health_state = None
         self._receive_addresses = None
-        self._scan_type = 'null'
+        self._scan_type = "null"
         self._scan_id = 0
 
         # Set attributes not updated by event loop
@@ -124,7 +123,7 @@ class SDPSubarray(SDPDevice):
         # Start event loop
         self._start_event_loop()
 
-        LOG.info('SDP Subarray initialised')
+        LOG.info("SDP Subarray initialised")
 
     # -----------------
     # Attribute methods
@@ -192,7 +191,7 @@ class SDPSubarray(SDPDevice):
 
     def is_On_allowed(self):
         """Check if the On command is allowed."""
-        command_name = 'On'
+        command_name = "On"
         self._command_allowed_state(command_name, [DevState.OFF])
         self._command_allowed_obs_state(command_name, [ObsState.EMPTY])
         return True
@@ -207,14 +206,14 @@ class SDPSubarray(SDPDevice):
         """
         for txn in self._config.txn():
             subarray = self._config.subarray(txn)
-            subarray.command = 'On'
+            subarray.command = "On"
             subarray.transaction_id = transaction_id
             subarray.state = DevState.ON
             subarray.obs_state_target = ObsState.EMPTY
 
     def is_Off_allowed(self):
         """Check if the Off command is allowed."""
-        command_name = 'Off'
+        command_name = "Off"
         self._command_allowed_state(command_name, [DevState.ON])
         return True
 
@@ -226,7 +225,7 @@ class SDPSubarray(SDPDevice):
         :param transaction_id: transaction ID
 
         """
-        command_name = 'Off'
+        command_name = "Off"
         if self._obs_state == ObsState.EMPTY:
             # This is a normal Off command.
             for txn in self._config.txn():
@@ -236,8 +235,8 @@ class SDPSubarray(SDPDevice):
                 subarray.state = DevState.OFF
         else:
             # ObsState is not EMPTY, so cancel the scheduling block instance.
-            LOG.info('obsState is not EMPTY')
-            LOG.info('Cancelling the scheduling block instance')
+            LOG.info("obsState is not EMPTY")
+            LOG.info("Cancelling the scheduling block instance")
             for txn in self._config.txn():
                 subarray = self._config.subarray(txn)
                 subarray.command = command_name
@@ -248,12 +247,12 @@ class SDPSubarray(SDPDevice):
 
     def is_AssignResources_allowed(self):
         """Check if the AssignResources command is allowed."""
-        command_name = 'AssignResources'
+        command_name = "AssignResources"
         self._command_allowed_state(command_name, [DevState.ON])
         self._command_allowed_obs_state(command_name, [ObsState.EMPTY])
         return True
 
-    @command_transaction(argdesc='resource configuration')
+    @command_transaction(argdesc="resource configuration")
     def AssignResources(self, transaction_id: str, config: str):
         """
         Assign resources to the subarray.
@@ -269,14 +268,14 @@ class SDPSubarray(SDPDevice):
 
         for txn in self._config.txn():
             subarray = self._config.subarray(txn)
-            subarray.command = 'AssignResources'
+            subarray.command = "AssignResources"
             subarray.transaction_id = transaction_id
             subarray.obs_state_target = ObsState.IDLE
             subarray.create_sbi_and_pbs(sbi, pbs)
 
     def is_ReleaseResources_allowed(self):
         """Check if the ReleaseResources command is allowed."""
-        command_name = 'ReleaseResources'
+        command_name = "ReleaseResources"
         self._command_allowed_state(command_name, [DevState.ON])
         self._command_allowed_obs_state(command_name, [ObsState.IDLE])
         return True
@@ -294,20 +293,19 @@ class SDPSubarray(SDPDevice):
         """
         for txn in self._config.txn():
             subarray = self._config.subarray(txn)
-            subarray.command = 'ReleaseResources'
+            subarray.command = "ReleaseResources"
             subarray.transaction_id = transaction_id
             subarray.obs_state_target = ObsState.EMPTY
             subarray.finish_sbi()
 
     def is_Configure_allowed(self):
         """Check if the Configure command is allowed."""
-        command_name = 'Configure'
+        command_name = "Configure"
         self._command_allowed_state(command_name, [DevState.ON])
-        self._command_allowed_obs_state(command_name, [ObsState.IDLE,
-                                                       ObsState.READY])
+        self._command_allowed_obs_state(command_name, [ObsState.IDLE, ObsState.READY])
         return True
 
-    @command_transaction(argdesc='scan type configuration')
+    @command_transaction(argdesc="scan type configuration")
     def Configure(self, transaction_id: str, config: str):
         """
         Configure scan type.
@@ -321,7 +319,7 @@ class SDPSubarray(SDPDevice):
 
         for txn in self._config.txn():
             subarray = self._config.subarray(txn)
-            subarray.command = 'Configure'
+            subarray.command = "Configure"
             subarray.transaction_id = transaction_id
             subarray.obs_state_target = ObsState.READY
             subarray.add_scan_types(new_scan_types)
@@ -329,12 +327,12 @@ class SDPSubarray(SDPDevice):
 
     def is_Scan_allowed(self):
         """Check if the Scan command is allowed."""
-        command_name = 'Scan'
+        command_name = "Scan"
         self._command_allowed_state(command_name, [DevState.ON])
         self._command_allowed_obs_state(command_name, [ObsState.READY])
         return True
 
-    @command_transaction(argdesc='scan ID')
+    @command_transaction(argdesc="scan ID")
     def Scan(self, transaction_id: str, config: str):
         """
         Start scan.
@@ -348,14 +346,14 @@ class SDPSubarray(SDPDevice):
 
         for txn in self._config.txn():
             subarray = self._config.subarray(txn)
-            subarray.command = 'Scan'
+            subarray.command = "Scan"
             subarray.transaction_id = transaction_id
             subarray.obs_state_target = ObsState.SCANNING
             subarray.scan_id = scan_id
 
     def is_EndScan_allowed(self):
         """Check if the EndScan command is allowed."""
-        command_name = 'EndScan'
+        command_name = "EndScan"
         self._command_allowed_state(command_name, [DevState.ON])
         self._command_allowed_obs_state(command_name, [ObsState.SCANNING])
         return True
@@ -370,14 +368,14 @@ class SDPSubarray(SDPDevice):
         """
         for txn in self._config.txn():
             subarray = self._config.subarray(txn)
-            subarray.command = 'EndScan'
+            subarray.command = "EndScan"
             subarray.transaction_id = transaction_id
             subarray.obs_state_target = ObsState.READY
             subarray.scan_id = None
 
     def is_End_allowed(self):
         """Check if the End command is allowed."""
-        command_name = 'End'
+        command_name = "End"
         self._command_allowed_state(command_name, [DevState.ON])
         self._command_allowed_obs_state(command_name, [ObsState.READY])
         return True
@@ -392,19 +390,24 @@ class SDPSubarray(SDPDevice):
         """
         for txn in self._config.txn():
             subarray = self._config.subarray(txn)
-            subarray.command = 'End'
+            subarray.command = "End"
             subarray.transaction_id = transaction_id
             subarray.obs_state_target = ObsState.IDLE
             subarray.scan_type = None
 
     def is_Abort_allowed(self):
         """Check if the Abort command is allowed."""
-        command_name = 'Abort'
+        command_name = "Abort"
         self._command_allowed_state(command_name, [DevState.ON])
         self._command_allowed_obs_state(
             command_name,
-            [ObsState.IDLE, ObsState.CONFIGURING, ObsState.READY,
-             ObsState.SCANNING, ObsState.RESETTING]
+            [
+                ObsState.IDLE,
+                ObsState.CONFIGURING,
+                ObsState.READY,
+                ObsState.SCANNING,
+                ObsState.RESETTING,
+            ],
         )
         return True
 
@@ -418,16 +421,17 @@ class SDPSubarray(SDPDevice):
         """
         for txn in self._config.txn():
             subarray = self._config.subarray(txn)
-            subarray.command = 'Abort'
+            subarray.command = "Abort"
             subarray.transaction_id = transaction_id
             subarray.obs_state_target = ObsState.ABORTED
 
     def is_ObsReset_allowed(self):
         """Check if the ObsReset command is allowed."""
-        command_name = 'ObsReset'
+        command_name = "ObsReset"
         self._command_allowed_state(command_name, [DevState.ON])
-        self._command_allowed_obs_state(command_name, [ObsState.ABORTED,
-                                                       ObsState.FAULT])
+        self._command_allowed_obs_state(
+            command_name, [ObsState.ABORTED, ObsState.FAULT]
+        )
         return True
 
     @command_transaction()
@@ -440,19 +444,19 @@ class SDPSubarray(SDPDevice):
         """
         for txn in self._config.txn():
             subarray = self._config.subarray(txn)
-            subarray.command = 'ObsReset'
+            subarray.command = "ObsReset"
             subarray.transaction_id = transaction_id
             subarray.obs_state_target = ObsState.IDLE
             subarray.scan_type = None
             subarray.scan_id = None
 
-
     def is_Restart_allowed(self):
         """Check if the Restart command is allowed."""
-        command_name = 'Restart'
+        command_name = "Restart"
         self._command_allowed_state(command_name, [DevState.ON])
-        self._command_allowed_obs_state(command_name, [ObsState.ABORTED,
-                                                       ObsState.FAULT])
+        self._command_allowed_obs_state(
+            command_name, [ObsState.ABORTED, ObsState.FAULT]
+        )
         return True
 
     @command_transaction()
@@ -465,7 +469,7 @@ class SDPSubarray(SDPDevice):
         """
         for txn in self._config.txn():
             subarray = self._config.subarray(txn)
-            subarray.command = 'Restart'
+            subarray.command = "Restart"
             subarray.transaction_id = transaction_id
             subarray.obs_state_target = ObsState.EMPTY
             subarray.cancel_sbi()
@@ -482,8 +486,7 @@ class SDPSubarray(SDPDevice):
         :param allowed: list of allowed obsState values
 
         """
-        self._command_allowed(command_name, 'obsState', self._obs_state,
-                              allowed)
+        self._command_allowed(command_name, "obsState", self._obs_state, allowed)
 
     # -------------------------
     # Attribute-setting methods
@@ -492,48 +495,49 @@ class SDPSubarray(SDPDevice):
     def _set_obs_state(self, value):
         """Set obsState and push a change event."""
         if self._obs_state != value:
-            LOG.info('Setting obsState to %s', value.name)
+            LOG.info("Setting obsState to %s", value.name)
             self._obs_state = value
-            self.push_change_event('obsState', self._obs_state)
+            self.push_change_event("obsState", self._obs_state)
 
     def _set_admin_mode(self, value):
         """Set adminMode and push a change event."""
         if self._admin_mode != value:
-            LOG.info('Setting adminMode to %s', value.name)
+            LOG.info("Setting adminMode to %s", value.name)
             self._admin_mode = value
-            self.push_change_event('adminMode', self._admin_mode)
+            self.push_change_event("adminMode", self._admin_mode)
 
     def _set_health_state(self, value):
         """Set healthState and push a change event."""
         if self._health_state != value:
-            LOG.info('Setting healthState to %s', value.name)
+            LOG.info("Setting healthState to %s", value.name)
             self._health_state = value
-            self.push_change_event('healthState', self._health_state)
+            self.push_change_event("healthState", self._health_state)
 
     def _set_receive_addresses(self, value):
         """Set receiveAddresses and push a change event."""
         if self._receive_addresses != value:
             if value is None:
-                LOG.info('Clearing receiveAddresses')
+                LOG.info("Clearing receiveAddresses")
             else:
-                LOG.info('Setting receiveAddresses')
+                LOG.info("Setting receiveAddresses")
             self._receive_addresses = value
-            self.push_change_event('receiveAddresses',
-                                   json.dumps(self._receive_addresses))
+            self.push_change_event(
+                "receiveAddresses", json.dumps(self._receive_addresses)
+            )
 
     def _set_scan_type(self, value):
         """Set scanType and push a change event."""
         if self._scan_type != value:
-            LOG.info('Setting scanType to %s', value)
+            LOG.info("Setting scanType to %s", value)
             self._scan_type = value
-            self.push_change_event('scanType', self._scan_type)
+            self.push_change_event("scanType", self._scan_type)
 
     def _set_scan_id(self, value):
         """Set scanID and push a change event."""
         if self._scan_id != value:
-            LOG.info('Setting scanID to %d', value)
+            LOG.info("Setting scanID to %d", value)
             self._scan_id = value
-            self.push_change_event('scanID', self._scan_id)
+            self.push_change_event("scanID", self._scan_id)
 
     # ------------------
     # Event loop methods
@@ -553,13 +557,13 @@ class SDPSubarray(SDPDevice):
         with log_transaction_id(subarray.transaction_id):
             self._set_state(subarray.state)
             self._set_receive_addresses(subarray.receive_addresses)
-            self._set_scan_type(
-                subarray.scan_type if subarray.scan_type else 'null'
-            )
+            self._set_scan_type(subarray.scan_type if subarray.scan_type else "null")
             self._set_scan_id(subarray.scan_id if subarray.scan_id else 0)
 
-            if subarray.obs_state_target == ObsState.IDLE and \
-                    subarray.command == 'AssignResources':
+            if (
+                subarray.obs_state_target == ObsState.IDLE
+                and subarray.command == "AssignResources"
+            ):
                 if subarray.receive_addresses is None:
                     obs_state = ObsState.RESOURCING
                 else:
@@ -582,8 +586,8 @@ class SDPSubarray(SDPDevice):
         :returns: subarray ID
 
         """
-        member = self.get_name().split('/')[2]
-        number = member.split('_')[1]
+        member = self.get_name().split("/")[2]
+        number = member.split("_")[1]
         subarray_id = number.zfill(2)
         return subarray_id
 
@@ -595,5 +599,5 @@ def main(args=None, **kwargs):
     return run((SDPSubarray,), args=args, **kwargs)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     main(check_args(SDPSubarray, sys.argv))

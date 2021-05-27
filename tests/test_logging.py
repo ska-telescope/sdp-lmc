@@ -14,6 +14,7 @@ MSG = "Running tango test"
 
 class ListHandler(logging.Handler):
     """A class for list handler."""
+
     def __init__(self):
         super().__init__()
         self.list = []
@@ -37,12 +38,13 @@ class ListHandler(logging.Handler):
 
 class FakeDevice:
     """Class for Fake Device."""
+
     def info_stream(self, _: str, *args) -> None:
         """Info Stream."""
         print("info stream should not be called")
 
     def get_name(self) -> str:
-        return 'fake'
+        return "fake"
 
     def get_logger(self) -> logging.Logger:
         """Get logger."""
@@ -53,10 +55,10 @@ def test_stuff():
     """Testing stuff."""
     dev = FakeDevice()
 
-    sys.argv = ['test']
+    sys.argv = ["test"]
     tl.init_logger(dev)
 
-    sys.argv = ['test', 'test', '-v']
+    sys.argv = ["test", "test", "-v"]
     tl.init_logger(dev)
     tl.set_level(tango.LogLevel.LOG_DEBUG)
 
@@ -67,4 +69,3 @@ def test_stuff():
     assert log is dev.get_logger()
     log.info(MSG)
     dev.info_stream(MSG)
-

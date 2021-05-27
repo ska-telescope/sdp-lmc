@@ -11,10 +11,8 @@ from ska.log_transactions import transaction
 from .feature_toggle import FeatureToggle
 from .tango_logging import log_transaction_id
 
-LOG = logging.getLogger('ska_sdp_lmc')
-FEATURE_ALL_COMMANDS_HAVE_ARGUMENT = FeatureToggle(
-    'all_commands_have_argument', False
-)
+LOG = logging.getLogger("ska_sdp_lmc")
+FEATURE_ALL_COMMANDS_HAVE_ARGUMENT = FeatureToggle("all_commands_have_argument", False)
 
 
 def command_transaction(argdesc: Optional[str] = None):
@@ -29,12 +27,13 @@ def command_transaction(argdesc: Optional[str] = None):
     :param argdesc: description of argument
 
     """
+
     def _decorator(command_method: Callable):
 
         # Define a wrapper that takes an optional string argument.
 
         @functools.wraps(command_method)
-        def wrapper(self, params_json='{}'):
+        def wrapper(self, params_json="{}"):
             name = command_method.__name__
             params = json.loads(params_json)
             with transaction(name, params, logger=LOG) as txn_id:
@@ -50,11 +49,11 @@ def command_transaction(argdesc: Optional[str] = None):
         if argdesc:
             # Create command with a string argument and use the supplied
             # description
-            desc = f'JSON string containing {argdesc} and optional transaction ID'
+            desc = f"JSON string containing {argdesc} and optional transaction ID"
             command_wrapped = command(f=wrapper, dtype_in=str, doc_in=desc)
         elif FEATURE_ALL_COMMANDS_HAVE_ARGUMENT.is_active():
             # Create command with a string argument and a generic description
-            desc = 'JSON string containing optional transaction ID'
+            desc = "JSON string containing optional transaction ID"
             command_wrapped = command(f=wrapper, dtype_in=str, doc_in=desc)
         else:
             # Create command with no argument for backwards compatibility

@@ -111,16 +111,24 @@ class SDPDevice(Device):
         with EnsureOmniThread():
             for watcher in self._config.watcher():
                 for txn in watcher.txn():
-                    self._set_from_config(txn)
+                    self._set_attr_from_config(txn)
 
     def update_attributes(self):
         """Update the device attributes manually."""
         LOG.info("Updating attributes")
         for txn in self._config.txn():
-            self._set_from_config(txn)
+            self._set_attr_from_config(txn)
 
-    def _set_from_config(self, txn: Transaction) -> None:
-        """Subclasses override this to set their state."""
+    def _set_attr_from_config(self, txn: Transaction) -> None:
+        """
+        Set attributes from configuration.
+
+        This is called by the event loop. Subclasses override this method to
+        set their state.
+
+        :param txn: configuration transaction
+
+        """
 
     # -----------------------
     # Command allowed methods

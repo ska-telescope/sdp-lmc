@@ -109,27 +109,15 @@ class SDPDevice(Device):
         LOG.info("Starting event loop")
         # Use EnsureOmniThread to make it thread-safe under Tango
         with EnsureOmniThread():
-            self._set_attributes()
+            for watcher in self._config.watcher():
+                for txn in watcher.txn():
+                    self._set_from_config(txn)
 
     def update_attributes(self):
         """Update the device attributes manually."""
         LOG.info("Updating attributes")
-        self._set_attributes(loop=False)
-
-    def _set_attributes(self, loop: bool = True) -> None:
-        """Set attributes based on configuration.
-
-        if `loop` is `True`, it acts as an event loop to watch for changes to
-        the configuration. If `loop` is `False` it makes a single pass.
-
-        :param loop: watch for changes to configuration and loop
-
-        """
         for txn in self._config.txn():
             self._set_from_config(txn)
-            if loop:
-                # Loop the transaction when the config entries are changed
-                txn.loop(wait=True)
 
     def _set_from_config(self, txn: Transaction) -> None:
         """Subclasses override this to set their state."""

@@ -17,10 +17,10 @@ import pytest
 from pytest_bdd import given, parsers, scenarios, then, when
 
 import ska_sdp_config
-from ska_sdp_lmc import AdminMode, HealthState, ObsState, devices_config, tango_logging
+from ska_sdp_lmc import AdminMode, HealthState, ObsState, base_config, tango_logging
 from . import test_logging
 
-CONFIG_DB_CLIENT = devices_config.new_config_db_client()
+CONFIG_DB_CLIENT = base_config.new_config_db_client()
 SUBARRAY_ID = "01"
 RECEIVE_WORKFLOWS = ["test_receive_addresses"]
 DEVICE_NAME = "test_sdp/elt/subarray_1"

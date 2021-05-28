@@ -9,9 +9,7 @@ from tango.server import attribute, run
 from ska_sdp_config.config import Transaction
 
 # Note that relative imports are incompatible with main.
-from ska_sdp_lmc.tango_logging import (
-    get_logger, init_logger, log_transaction_id
-)
+from ska_sdp_lmc.tango_logging import get_logger, init_logger, log_transaction_id
 from ska_sdp_lmc.attributes import HealthState
 from ska_sdp_lmc.base import SDPDevice
 from ska_sdp_lmc.commands import command_transaction
@@ -32,10 +30,10 @@ class SDPMaster(SDPDevice):
     # ----------
 
     healthState = attribute(
-        label='Health state',
+        label="Health state",
         dtype=HealthState,
         access=AttrWriteType.READ,
-        doc='Master device health state'
+        doc="Master device health state",
     )
 
     # ---------------
@@ -46,12 +44,12 @@ class SDPMaster(SDPDevice):
         """Initialise the device."""
         init_logger(self)
 
-        LOG.info('SDP Master initialising')
+        LOG.info("SDP Master initialising")
         super().init_device()
         self.set_state(DevState.INIT)
 
         # Enable change events on attributes
-        self.set_change_event('healthState', True)
+        self.set_change_event("healthState", True)
 
         # Initialise private values of attributes
         self._health_state = None
@@ -70,7 +68,7 @@ class SDPMaster(SDPDevice):
         # Start event loop
         self._start_event_loop()
 
-        LOG.info('SDP Master initialised')
+        LOG.info("SDP Master initialised")
 
     # -----------------
     # Attribute methods
@@ -90,7 +88,7 @@ class SDPMaster(SDPDevice):
     def is_On_allowed(self):
         """Check if the On command is allowed."""
         self._command_allowed_state(
-            'On', [DevState.OFF, DevState.STANDBY, DevState.DISABLE]
+            "On", [DevState.OFF, DevState.STANDBY, DevState.DISABLE]
         )
         return True
 
@@ -110,7 +108,7 @@ class SDPMaster(SDPDevice):
     def is_Disable_allowed(self):
         """Check if the Disable command is allowed."""
         self._command_allowed_state(
-            'Disable', [DevState.OFF, DevState.STANDBY, DevState.ON]
+            "Disable", [DevState.OFF, DevState.STANDBY, DevState.ON]
         )
         return True
 
@@ -130,7 +128,7 @@ class SDPMaster(SDPDevice):
     def is_Standby_allowed(self):
         """Check if the Standby command is allowed."""
         self._command_allowed_state(
-            'Standby', [DevState.OFF, DevState.DISABLE, DevState.ON]
+            "Standby", [DevState.OFF, DevState.DISABLE, DevState.ON]
         )
         return True
 
@@ -150,7 +148,7 @@ class SDPMaster(SDPDevice):
     def is_Off_allowed(self):
         """Check if the Off command is allowed."""
         self._command_allowed_state(
-            'Off', [DevState.STANDBY, DevState.DISABLE, DevState.ON]
+            "Off", [DevState.STANDBY, DevState.DISABLE, DevState.ON]
         )
         return True
 
@@ -191,9 +189,9 @@ class SDPMaster(SDPDevice):
     def _set_health_state(self, value):
         """Set healthState and push a change event."""
         if self._health_state != value:
-            LOG.info('Setting healthState to %s', value.name)
+            LOG.info("Setting healthState to %s", value.name)
             self._health_state = value
-            self.push_change_event('healthState', self._health_state)
+            self.push_change_event("healthState", self._health_state)
 
 
 def main(args=None, **kwargs):
@@ -203,5 +201,5 @@ def main(args=None, **kwargs):
     return run((SDPMaster,), args=args, **kwargs)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     main(check_args(SDPMaster, sys.argv))

@@ -11,9 +11,9 @@ from ska_telmodel.schema import validate
 from ska_telmodel.sdp.version import SDP_ASSIGNRES_PREFIX, SDP_CONFIG_PREFIX
 from .exceptions import raise_command_failed
 
-MSG_VALIDATION_FAILED = 'Configuration validation failed'
-LOG = logging.getLogger('ska_sdp_config')
-SCHEMA_VERSION = '0.2'
+MSG_VALIDATION_FAILED = "Configuration validation failed"
+LOG = logging.getLogger("ska_sdp_config")
+SCHEMA_VERSION = "0.2"
 
 
 def validate_assign_resources(config_str):
@@ -47,56 +47,60 @@ def _parse_sbi_and_pbs(config):
     """
     # Create scheduling block instance
 
-    sbi_id = config.get('id')
+    sbi_id = config.get("id")
 
     sbi = {
-        'id': sbi_id,
-        'subarray_id': None,
-        'scan_types': config.get('scan_types'),
-        'pb_realtime': [],
-        'pb_batch': [],
-        'pb_receive_addresses': None,
-        'current_scan_type': None,
-        'scan_id': None,
-        'status': 'ACTIVE'
+        "id": sbi_id,
+        "subarray_id": None,
+        "scan_types": config.get("scan_types"),
+        "pb_realtime": [],
+        "pb_batch": [],
+        "pb_receive_addresses": None,
+        "current_scan_type": None,
+        "scan_id": None,
+        "status": "ACTIVE",
     }
 
     # Loop over the processing block configurations
 
     pbs = []
 
-    for pbc in config.get('processing_blocks'):
+    for pbc in config.get("processing_blocks"):
 
-        pb_id = pbc.get('id')
-        LOG.info('Parsing processing block %s', pb_id)
+        pb_id = pbc.get("id")
+        LOG.info("Parsing processing block %s", pb_id)
 
         # Get type of workflow and add the processing block ID to the
         # appropriate list.
-        workflow = pbc.get('workflow')
-        wf_type = workflow.get('type')
-        if wf_type == 'realtime':
-            sbi['pb_realtime'].append(pb_id)
-        elif wf_type == 'batch':
-            sbi['pb_batch'].append(pb_id)
+        workflow = pbc.get("workflow")
+        wf_type = workflow.get("type")
+        if wf_type == "realtime":
+            sbi["pb_realtime"].append(pb_id)
+        elif wf_type == "batch":
+            sbi["pb_batch"].append(pb_id)
         else:
-            LOG.error('Unknown workflow type: %s', wf_type)
+            LOG.error("Unknown workflow type: %s", wf_type)
 
-        parameters = pbc.get('parameters')
+        parameters = pbc.get("parameters")
 
         dependencies = []
-        if 'dependencies' in pbc:
-            if wf_type == 'realtime':
-                LOG.error('dependencies attribute must not appear in '
-                          'real-time processing block configuration')
-            if wf_type == 'batch':
-                dependencies = pbc.get('dependencies')
+        if "dependencies" in pbc:
+            if wf_type == "realtime":
+                LOG.error(
+                    "dependencies attribute must not appear in "
+                    "real-time processing block configuration"
+                )
+            if wf_type == "batch":
+                dependencies = pbc.get("dependencies")
 
         # Add processing block to list
         pbs.append(
             ska_sdp_config.ProcessingBlock(
-                pb_id, sbi_id, workflow,
+                pb_id,
+                sbi_id,
+                workflow,
                 parameters=parameters,
-                dependencies=dependencies
+                dependencies=dependencies,
             )
         )
 
@@ -119,8 +123,8 @@ def validate_configure(config_str):
         # Validation has failed, so raise an error
         raise_command_failed(MSG_VALIDATION_FAILED, __name__)
 
-    new_scan_types = config.get('new_scan_types')
-    scan_type = config.get('scan_type')
+    new_scan_types = config.get("new_scan_types")
+    scan_type = config.get("scan_type")
 
     return new_scan_types, scan_type
 
@@ -133,13 +137,13 @@ def validate_scan(config_str):
 
     """
     # Validate the configuration string against the JSON schema
-    config = validate_json_config(config_str, schema_filename='scan.json')
+    config = validate_json_config(config_str, schema_filename="scan.json")
 
     if config is None:
         # Validation has failed, so raise an error
         raise_command_failed(MSG_VALIDATION_FAILED, __name__)
 
-    scan_id = config.get('id')
+    scan_id = config.get("id")
 
     return scan_id
 
@@ -161,37 +165,34 @@ def validate_json_config(config_str, schema_uri=None, schema_filename=None):
     try:
         config = json.loads(config_str)
         if schema_filename is None:
-            if 'interface' in config.keys():
-                schema = config['interface']
-                LOG.debug('Validating JSON configuration against schema %s',
-                          schema)
+            if "interface" in config.keys():
+                schema = config["interface"]
+                LOG.debug("Validating JSON configuration against schema %s", schema)
                 validate(schema, config, 1)
             else:
-                LOG.debug('Validating JSON configuration against schema %s',
-                          schema_uri)
+                LOG.debug("Validating JSON configuration against schema %s", schema_uri)
                 validate(schema_uri, config, 1)
         else:
-            LOG.debug('Validating JSON configuration against schema %s',
-                      schema_filename)
-            schema_path = os.path.join(os.path.dirname(__file__), 'schema',
-                                       schema_filename)
-            with open(schema_path, 'r') as file:
+            LOG.debug(
+                "Validating JSON configuration against schema %s", schema_filename
+            )
+            schema_path = os.path.join(
+                os.path.dirname(__file__), "schema", schema_filename
+            )
+            with open(schema_path, "r") as file:
                 schema = json.load(file)
             jsonschema.validate(config, schema)
     except json.JSONDecodeError as error:
-        LOG.error('Unable to decode configuration string as JSON: %s',
-                  error.msg)
+        LOG.error("Unable to decode configuration string as JSON: %s", error.msg)
         config = None
     except jsonschema.ValidationError as error:
-        LOG.error('Unable to validate JSON configuration: %s',
-                  error.message)
+        LOG.error("Unable to validate JSON configuration: %s", error.message)
         config = None
     except ValueError as error:
-        LOG.error('Unable to validate JSON configuration: %s',
-                    str(error))
+        LOG.error("Unable to validate JSON configuration: %s", str(error))
         config = None
 
     if config is not None:
-        LOG.debug('Successfully validated JSON configuration')
+        LOG.debug("Successfully validated JSON configuration")
 
     return config

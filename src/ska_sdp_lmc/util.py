@@ -6,7 +6,7 @@ import pathlib
 import sys
 from typing import List, Type, Optional
 
-LOG = logging.getLogger('ska_sdp_lmc')
+LOG = logging.getLogger("ska_sdp_lmc")
 
 
 # This is to find the stack info of the caller, not the one in this module.
@@ -35,9 +35,12 @@ class _CallerFilter(logging.Filter):
         return True
 
 
-LOG.addFilter(_CallerFilter(
-    ignore=lambda f: f.filename == __file__,
-    match=lambda f: any([text in f.filename for text in ('lmc', 'tests')])))
+LOG.addFilter(
+    _CallerFilter(
+        ignore=lambda f: f.filename == __file__,
+        match=lambda f: any([text in f.filename for text in ("lmc", "tests")]),
+    )
+)
 
 
 def terminate(signame, frame):

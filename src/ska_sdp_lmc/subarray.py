@@ -543,11 +543,11 @@ class SDPSubarray(SDPDevice):
     # Event loop methods
     # ------------------
 
-    def _set_from_config(self, txn: Transaction) -> None:
+    def _set_attr_from_config(self, txn: Transaction) -> None:
         """
-        Set attributes based on configuration.
+        Set attributes from configuration.
 
-        This is called from the event loop.
+        This is called by the event loop.
 
         :param txn: configuration transaction
 

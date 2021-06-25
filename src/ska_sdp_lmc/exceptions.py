@@ -4,7 +4,7 @@ import logging
 
 from tango import Except, ErrSeverity
 
-LOG = logging.getLogger('ska_sdp_lmc')
+LOG = logging.getLogger("ska_sdp_lmc")
 
 
 def raise_exception(reason, desc, origin, severity=ErrSeverity.ERR):
@@ -15,11 +15,11 @@ def raise_exception(reason, desc, origin, severity=ErrSeverity.ERR):
     :param origin: Error origin.
 
     """
-    LOG.error('Raising DevFailed exception...')
-    LOG.error('Reason: %s', reason)
-    LOG.error('Description: %s', desc)
-    LOG.error('Origin: %s', origin)
-    LOG.error('Severity: %s', severity)
+    LOG.error("Raising DevFailed exception...")
+    LOG.error("Reason: %s", reason)
+    LOG.error("Description: %s", desc)
+    LOG.error("Origin: %s", origin)
+    LOG.error("Severity: %s", severity)
     Except.throw_exception(reason, desc, origin, severity)
 
 
@@ -30,7 +30,7 @@ def raise_command_not_allowed(desc, origin):
     :param origin: Error origin.
 
     """
-    raise_exception('API_CommandNotAllowed', desc, origin)
+    raise_exception("API_CommandNotAllowed", desc, origin)
 
 
 def raise_command_failed(desc, origin):
@@ -40,4 +40,4 @@ def raise_command_failed(desc, origin):
     :param origin: Error origin.
 
     """
-    raise_exception('API_CommandFailed', desc, origin)
+    raise_exception("API_CommandFailed", desc, origin)

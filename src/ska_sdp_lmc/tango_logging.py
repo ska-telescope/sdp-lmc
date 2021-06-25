@@ -17,14 +17,14 @@ from ska.base.base_device import TangoLoggingServiceHandler
 from ska_sdp_lmc.util import is_test_env
 from ska_sdp_lmc.feature_toggle import FeatureToggle
 
-FEATURE_TANGO_LOGGER = FeatureToggle('tango_logger', True)
+FEATURE_TANGO_LOGGER = FeatureToggle("tango_logger", True)
 _TANGO_TO_PYTHON = {
     tango.LogLevel.LOG_FATAL: logging.CRITICAL,
     tango.LogLevel.LOG_ERROR: logging.ERROR,
     tango.LogLevel.LOG_WARN: logging.WARNING,
     tango.LogLevel.LOG_INFO: logging.INFO,
     tango.LogLevel.LOG_DEBUG: logging.DEBUG,
-    tango.LogLevel.LOG_OFF: logging.NOTSET
+    tango.LogLevel.LOG_OFF: logging.NOTSET,
 }
 _PYTHON_TO_TANGO = {v: k for k, v in _TANGO_TO_PYTHON.items()}
 
@@ -35,8 +35,11 @@ def to_python_level(tango_level: tango.LogLevel) -> int:
     :param tango_level: Tango log level
     :returns: Python log level
     """
-    return _TANGO_TO_PYTHON[tango_level]\
-        if tango_level in _TANGO_TO_PYTHON else logging.INFO
+    return (
+        _TANGO_TO_PYTHON[tango_level]
+        if tango_level in _TANGO_TO_PYTHON
+        else logging.INFO
+    )
 
 
 def to_tango_level(python_level: int) -> tango.LogLevel:
@@ -45,8 +48,11 @@ def to_tango_level(python_level: int) -> tango.LogLevel:
     :param python_level: Python log level
     :returns: Tango log level
     """
-    return _PYTHON_TO_TANGO[python_level]\
-        if python_level in _PYTHON_TO_TANGO else tango.LogLevel.LOG_INFO
+    return (
+        _PYTHON_TO_TANGO[python_level]
+        if python_level in _PYTHON_TO_TANGO
+        else tango.LogLevel.LOG_INFO
+    )
 
 
 class LogManager:
@@ -86,9 +92,9 @@ class TangoFilter(logging.Filter):
 
     # pylint: disable=too-few-public-methods
 
-    device_name = ''
+    device_name = ""
     # Use a context variable to store the transaction ID
-    transaction_id = contextvars.ContextVar('transaction_id', default='')
+    transaction_id = contextvars.ContextVar("transaction_id", default="")
     log_man = LogManager()
 
     def filter(self, record: logging.LogRecord) -> bool:
@@ -98,10 +104,10 @@ class TangoFilter(logging.Filter):
         :param record: log record
         :return: true if record should be logged (always)
         """
-        tags = 'tango-device:' + TangoFilter.device_name
+        tags = "tango-device:" + TangoFilter.device_name
         transaction_id = TangoFilter.transaction_id.get()
         if transaction_id:
-            tags += ',' + transaction_id
+            tags += "," + transaction_id
         record.tags = tags
 
         level = record.levelno
@@ -150,7 +156,7 @@ def log_transaction_id(txn_id):
     """
     set_transaction_id(txn_id)
     yield
-    set_transaction_id('')
+    set_transaction_id("")
 
 
 def get_logger() -> logging.Logger:
@@ -161,12 +167,15 @@ def get_logger() -> logging.Logger:
 
     :return: logger
     """
-    return logging.getLogger('ska_sdp_lmc')
+    return logging.getLogger("ska_sdp_lmc")
 
 
-def configure(device: Any, device_name: str = None,
-              level=tango.LogLevel.LOG_INFO,
-              handlers: Iterable[logging.Handler] = None) -> None:
+def configure(
+    device: Any,
+    device_name: str = None,
+    level=tango.LogLevel.LOG_INFO,
+    handlers: Iterable[logging.Handler] = None,
+) -> None:
     """Configure logging for a TANGO device.
 
     This modifies the logging behaviour of the device class.
@@ -188,7 +197,7 @@ def configure(device: Any, device_name: str = None,
     device_class.warn_stream = TangoFilter.log_man.make_fn(logging.WARNING)
     device_class.error_stream = TangoFilter.log_man.make_fn(logging.ERROR)
     device_class.fatal_stream = TangoFilter.log_man.make_fn(logging.CRITICAL)
-    #device_class.get_logger = lambda self: get_logger()
+    # device_class.get_logger = lambda self: get_logger()
 
     # Now initialise the logging.
     python_level = to_python_level(level)
@@ -203,20 +212,20 @@ def configure(device: Any, device_name: str = None,
     # If it's a real tango device, add a handler.
     if FEATURE_TANGO_LOGGER.is_active():
         if isinstance(device, Device):
-            log.debug('Adding tango logging handler')
+            log.debug("Adding tango logging handler")
             handlers.append(TangoLoggingServiceHandler(device.get_logger()))
         else:
             cls = type(device)
-            log.debug('Device %s is not a tango server device: %s', cls, cls.mro())
+            log.debug("Device %s is not a tango server device: %s", cls, cls.mro())
 
     tango_filter = TangoFilter()
     for handler in handlers:
-        log.debug('add handler %s', handler.__class__.__name__)
+        log.debug("add handler %s", handler.__class__.__name__)
         handler.addFilter(tango_filter)
         handler.setFormatter(get_default_formatter(tags=True))
         log.addHandler(handler)
 
-    log.debug('Configured logging for device %s', device_name)
+    log.debug("Configured logging for device %s", device_name)
 
 
 def init_logger(device: Any) -> None:
@@ -229,6 +238,6 @@ def init_logger(device: Any) -> None:
     if is_test_env():
         return
     log_level = tango.LogLevel.LOG_INFO
-    if len(sys.argv) > 2 and '-v' in sys.argv[2]:
+    if len(sys.argv) > 2 and "-v" in sys.argv[2]:
         log_level = tango.LogLevel.LOG_DEBUG
     configure(device, level=log_level)

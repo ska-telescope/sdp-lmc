@@ -13,7 +13,7 @@ from .exceptions import raise_command_not_allowed
 from .tango_logging import get_logger
 
 LOG = get_logger()
-FEATURE_EVENT_LOOP = FeatureToggle('event_loop', True)
+FEATURE_EVENT_LOOP = FeatureToggle("event_loop", True)
 
 
 class SDPDevice(Device):
@@ -26,10 +26,10 @@ class SDPDevice(Device):
     # ----------
 
     version = attribute(
-        label='Version',
+        label="Version",
         dtype=str,
         access=AttrWriteType.READ,
-        doc='The version of the device'
+        doc="The version of the device",
     )
 
     # ---------------
@@ -41,16 +41,16 @@ class SDPDevice(Device):
         super().init_device()
 
         # Enable change events on attributes
-        self.set_change_event('State', True)
+        self.set_change_event("State", True)
 
         # Initialise private values of attributes
         self._version = release.VERSION
 
-
     def delete_device(self):
         """Device destructor."""
-        LOG.info('Deleting %s device: %s', self._get_device_name().lower(),
-                 self.get_name())
+        LOG.info(
+            "Deleting %s device: %s", self._get_device_name().lower(), self.get_name()
+        )
 
     def always_executed_hook(self):
         """Run for on each call."""
@@ -71,14 +71,14 @@ class SDPDevice(Device):
         """Set device state."""
         state = self.get_state()
         if state != value:
-            LOG.info('Setting device state %s -> %s', state, value.name)
+            LOG.info("Setting device state %s -> %s", state, value.name)
             self.set_state(value)
-            self.push_change_event('State', self.get_state())
+            self.push_change_event("State", self.get_state())
 
     @classmethod
     def _get_device_name(cls):
         # This gets the class name minus SDP e.g. Master
-        return cls.__name__.split('SDP')[1]
+        return cls.__name__.split("SDP")[1]
 
     # ------------------
     # Event loop methods
@@ -89,12 +89,12 @@ class SDPDevice(Device):
 
         if FEATURE_EVENT_LOOP.is_active():
             # The event loop should only be started once.
-            if hasattr(self, '_event_thread'):
-                LOG.info('Event loop already started')
+            if hasattr(self, "_event_thread"):
+                LOG.info("Event loop already started")
                 return
             # Start event loop in thread
             thread = threading.Thread(
-                target=self._event_loop, name='EventLoop', daemon=True
+                target=self._event_loop, name="EventLoop", daemon=True
             )
             thread.start()
         else:
@@ -107,14 +107,14 @@ class SDPDevice(Device):
 
     def _event_loop(self):
         """Event loop to update attributes automatically."""
-        LOG.info('Starting event loop')
+        LOG.info("Starting event loop")
         # Use EnsureOmniThread to make it thread-safe under Tango
         with EnsureOmniThread():
             self._set_attributes()
 
     def update_attributes(self):
         """Update the device attributes manually."""
-        LOG.info('Updating attributes')
+        LOG.info("Updating attributes")
         self._set_attributes(loop=False)
 
     def _set_attributes(self, loop: bool = True) -> None:
@@ -159,9 +159,11 @@ class SDPDevice(Device):
                 value_message = value.name
             else:
                 value_message = value
-            message = f'Command {command_name} not allowed when ' \
-                      f'{attribute_name} is {value_message}'
-            origin = f'{type(self).__name__}.is_{command_name}_allowed()'
+            message = (
+                f"Command {command_name} not allowed when "
+                f"{attribute_name} is {value_message}"
+            )
+            origin = f"{type(self).__name__}.is_{command_name}_allowed()"
             raise_command_not_allowed(message, origin)
 
     def _command_allowed_state(self, command_name, allowed):
@@ -171,5 +173,4 @@ class SDPDevice(Device):
         :param allowed: list of allowed device state values
 
         """
-        self._command_allowed(command_name, 'device state', self.get_state(),
-                              allowed)
+        self._command_allowed(command_name, "device state", self.get_state(), allowed)

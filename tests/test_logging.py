@@ -22,14 +22,14 @@ class ListHandler(logging.Handler):
         self.list.append(msg)
 
     def get_line(self, pos: int):
-        return self.list[pos] if self.list else '||||||'
+        return self.list[pos] if self.list else "||||||"
 
     def get_tag_from(self, pos: int) -> str:
         return self.get_tag_from_line(self.get_line(pos))
 
     @staticmethod
     def get_tag_from_line(line: str) -> str:
-        return line.split('|')[6]
+        return line.split("|")[6]
 
     def get_last(self) -> str:
         return self.get_line(-1)
@@ -55,7 +55,7 @@ class FakeDevice:
         print("info stream should not be called")
 
     def get_name(self) -> str:
-        return 'fake'
+        return "fake"
 
     def get_logger(self) -> logging.Logger:
         return tl.get_logger()
@@ -64,10 +64,10 @@ class FakeDevice:
 def test_stuff():
     dev = FakeDevice()
 
-    sys.argv = ['test']
+    sys.argv = ["test"]
     tl.init_logger(dev)
 
-    sys.argv = ['test', 'test', '-v']
+    sys.argv = ["test", "test", "-v"]
     tl.init_logger(dev)
     tl.set_level(tango.LogLevel.LOG_DEBUG)
 

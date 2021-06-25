@@ -27,6 +27,7 @@ class Monitor:
 
     Could be promoted from tests to utilities api?
     """
+
     _instances = {}
 
     def __init__(self, device, attribute: str):
@@ -38,12 +39,14 @@ class Monitor:
         key = self.to_key(device, attribute)
         Monitor._instances[key] = self
         LOG.info("Subscribing to change events on %s", key)
-        self.change_id = device.subscribe_event(attribute, EventType.CHANGE_EVENT,
-                                                self._change)
+        self.change_id = device.subscribe_event(
+            attribute, EventType.CHANGE_EVENT, self._change
+        )
         if self.attribute != "State":
             # I can't find a way to do this for state.
-            self.ready_id = device.subscribe_event(attribute, EventType.DATA_READY_EVENT,
-                                                   self._ready)
+            self.ready_id = device.subscribe_event(
+                attribute, EventType.DATA_READY_EVENT, self._ready
+            )
         else:
             self.ready_id = None
 
@@ -60,13 +63,18 @@ class Monitor:
 
     @staticmethod
     def get_state_instance(device) -> "Monitor":
-        return Monitor.get_instance(device, 'State')
+        return Monitor.get_instance(device, "State")
 
     def _event(self, event_type: str, ed):
-        s = ed.attr_name.rfind('/') + 1
-        e = ed.attr_name.rfind('#')
-        LOG.info("%s event for %s: %s -> %s", event_type, ed.device,
-                 ed.attr_name[s:e], self.value)
+        s = ed.attr_name.rfind("/") + 1
+        e = ed.attr_name.rfind("#")
+        LOG.info(
+            "%s event for %s: %s -> %s",
+            event_type,
+            ed.device,
+            ed.attr_name[s:e],
+            self.value,
+        )
 
     def _change(self, ed: EventData):
         self.value = str(ed.attr_value.value)
@@ -84,11 +92,15 @@ class Monitor:
             self.changed = False
         return changed
 
-    def wait_for(self, predicate: Callable, timeout: float = 5.0, sleep: float = 0.1) -> str:
+    def wait_for(
+        self, predicate: Callable, timeout: float = 5.0, sleep: float = 0.1
+    ) -> str:
         wait_for(predicate, timeout, sleep)
         return self.value
 
-    def wait_for_value(self, value: str, timeout: float = 5.0, sleep: float = 0.1) -> str:
+    def wait_for_value(
+        self, value: str, timeout: float = 5.0, sleep: float = 0.1
+    ) -> str:
         def predicate():
             LOG.debug("Test if %s is %s", self.value, value)
             return self.value == value
@@ -130,8 +142,9 @@ def wait_for_state(device, state: str) -> None:
     Monitor.get_state_instance(device).wait_for_value(state)
 
 
-def wait_for_multiple(device, attributes: Sequence[str],
-                      predicate: Callable[[Sequence[Monitor]], bool]) -> None:
+def wait_for_multiple(
+    device, attributes: Sequence[str], predicate: Callable[[Sequence[Monitor]], bool]
+) -> None:
     feature_check(device)
     monitors = [Monitor.get_instance(device, attr) for attr in attributes]
     wait_for(lambda: predicate(monitors))
@@ -140,13 +153,19 @@ def wait_for_multiple(device, attributes: Sequence[str],
 
 
 def wait_for_changes(device, attributes: Sequence[str]) -> None:
-    wait_for_multiple(device, attributes,
-                      lambda monitors: all([mon.changed for mon in monitors]))
+    wait_for_multiple(
+        device, attributes, lambda monitors: all([mon.changed for mon in monitors])
+    )
 
 
 def wait_for_values(device, attributes: List[str], values: List[str]) -> None:
-    wait_for_multiple(device, attributes, lambda monitors:
-                      all([monitors[i].value == values[i] for i in range(len(monitors))]))
+    wait_for_multiple(
+        device,
+        attributes,
+        lambda monitors: all(
+            [monitors[i].value == values[i] for i in range(len(monitors))]
+        ),
+    )
 
 
 def init_device(devices, name: str, wipe_config_db: Callable):
@@ -155,8 +174,9 @@ def init_device(devices, name: str, wipe_config_db: Callable):
 
     # Configure logging to be captured
     LOG_LIST.clear()
-    tango_logging.configure(device, device_name=name, handlers=[LOG_LIST],
-                            level=LogLevel.LOG_DEBUG)
+    tango_logging.configure(
+        device, device_name=name, handlers=[LOG_LIST], level=LogLevel.LOG_DEBUG
+    )
 
     # Wipe the config DB
     wipe_config_db()

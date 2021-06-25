@@ -2,14 +2,14 @@
 
 # pylint: disable=redefined-outer-name
 # pylint: disable=duplicate-code
-from pytest_bdd import (given, parsers, scenarios, then, when)
+from pytest_bdd import given, parsers, scenarios, then, when
 
 import tango
 
 from . import device_utils
 from ska_sdp_lmc import HealthState, tango_logging, base_config
 
-DEVICE_NAME = 'test_sdp/elt/master'
+DEVICE_NAME = "test_sdp/elt/master"
 CONFIG_DB_CLIENT = base_config.new_config_db_client()
 LOG = tango_logging.get_logger()
 
@@ -17,14 +17,15 @@ LOG = tango_logging.get_logger()
 # Get scenarios from feature file
 # -------------------------------
 
-scenarios('features/master.feature')
+scenarios("features/master.feature")
 
 
 # -----------
 # Given steps
 # -----------
 
-@given('I have an SDPMaster device', target_fixture='master_device')
+
+@given("I have an SDPMaster device", target_fixture="master_device")
 def master_device(devices):
     """Get the SDPMaster device proxy.
 
@@ -33,11 +34,11 @@ def master_device(devices):
     """
     device = device_utils.init_device(devices, DEVICE_NAME, wipe_config_db)
     device_utils.Monitor.close_all()
-    device_utils.Monitor(device, 'State')
+    device_utils.Monitor(device, "State")
     return device
 
 
-@given('the state is <initial_state>')
+@given("the state is <initial_state>")
 def set_device_state(master_device, initial_state):
     """Set the device state.
 
@@ -59,7 +60,8 @@ def set_device_state(master_device, initial_state):
 # When steps
 # ----------
 
-@when('I call <command>')
+
+@when("I call <command>")
 def command(master_device, command):
     """Call the device commands.
 
@@ -89,8 +91,9 @@ def command(master_device, command):
 # Then steps
 # ----------
 
-@then(parsers.parse('the state should be {final_state:S}'))
-@then('the state should be <final_state>')
+
+@then(parsers.parse("the state should be {final_state:S}"))
+@then("the state should be <final_state>")
 def check_device_state(master_device, final_state):
     """Check the device state.
 
@@ -101,7 +104,7 @@ def check_device_state(master_device, final_state):
     assert master_device.state() == tango.DevState.names[final_state]
 
 
-@then(parsers.parse('healthState should be {health_state:S}'))
+@then(parsers.parse("healthState should be {health_state:S}"))
 def check_health_state(master_device, health_state):
     """Check healthState.
 
@@ -112,7 +115,7 @@ def check_health_state(master_device, health_state):
     assert master_device.healthState == HealthState[health_state]
 
 
-@then('the device should raise tango.DevFailed')
+@then("the device should raise tango.DevFailed")
 def command_raises_dev_failed_error(master_device):
     """Check that calling command raises a tango.DevFailed error.
 
@@ -122,27 +125,28 @@ def command_raises_dev_failed_error(master_device):
     assert e is not None and isinstance(e, tango.DevFailed)
 
 
-@then('the log should not contain a transaction ID')
+@then("the log should not contain a transaction ID")
 def log_contains_no_transaction_id():
     """Check that the log does not contain a transaction ID."""
-    assert not device_utils.LOG_LIST.text_in_tag('txn-', last=5)
+    assert not device_utils.LOG_LIST.text_in_tag("txn-", last=5)
 
 
-@then('the log should contain a transaction ID')
+@then("the log should contain a transaction ID")
 def log_contains_transaction_id():
     """Check that the log contains a transaction ID."""
     # Allow some scope for some additional messages afterwards.
-    assert device_utils.LOG_LIST.text_in_tag('txn-', last=5)
+    assert device_utils.LOG_LIST.text_in_tag("txn-", last=5)
 
 
 # -----------------------------------------------------------------------------
 # Ancillary functions
 # -----------------------------------------------------------------------------
 
+
 def wipe_config_db():
     """Remove all entries in the config DB."""
-    CONFIG_DB_CLIENT.backend.delete('/master', must_exist=False, recursive=True)
-    tango_logging.set_transaction_id('')
+    CONFIG_DB_CLIENT.backend.delete("/master", must_exist=False, recursive=True)
+    tango_logging.set_transaction_id("")
 
 
 def set_state(state):
@@ -154,10 +158,7 @@ def set_state(state):
     # Check state is a valid value
     assert state in tango.DevState.names
 
-    master = {
-        'transaction_id': None,
-        'state': state
-    }
+    master = {"transaction_id": None, "state": state}
 
     for txn in CONFIG_DB_CLIENT.txn():
         txn.update_master(master)

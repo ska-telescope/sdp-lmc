@@ -20,18 +20,8 @@ base.FEATURE_EVENT_LOOP.set_default(False)
 
 # List of devices for the test session
 device_info = [
-    {
-        'class': SDPMaster,
-        'devices': [
-            {'name': 'test_sdp/elt/master'}
-        ]
-    },
-    {
-        'class': SDPSubarray,
-        'devices': [
-            {'name': 'test_sdp/elt/subarray_1'}
-        ]
-    }
+    {"class": SDPMaster, "devices": [{"name": "test_sdp/elt/master"}]},
+    {"class": SDPSubarray, "devices": [{"name": "test_sdp/elt/subarray_1"}]},
 ]
 
 
@@ -43,7 +33,7 @@ def device_gen(context: MultiDeviceTestContext):
             yield context.get_device(d["name"])
 
 
-@pytest.fixture(scope='session')
+@pytest.fixture(scope="session")
 def devices():
     """Start the devices in a MultiDeviceTestContext."""
     context = MultiDeviceTestContext(device_info)

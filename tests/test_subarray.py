@@ -13,19 +13,18 @@ import tango
 from ska_telmodel.schema import validate
 from ska_telmodel.sdp.version import SDP_ASSIGNRES, SDP_CONFIG, SDP_RECVADDRS
 
-from pytest_bdd import (given, parsers, scenarios, then, when)
+from pytest_bdd import given, parsers, scenarios, then, when
 
 import ska_sdp_config
 
 from . import device_utils
-from ska_sdp_lmc import (AdminMode, HealthState, ObsState,
-                         base_config, tango_logging)
+from ska_sdp_lmc import AdminMode, HealthState, ObsState, base_config, tango_logging
 
 CONFIG_DB_CLIENT = base_config.new_config_db_client()
-SUBARRAY_ID = '01'
-RECEIVE_WORKFLOWS = ['test_receive_addresses']
-DEVICE_NAME = 'test_sdp/elt/subarray_1'
-SCHEMA_VERSION = '0.2'
+SUBARRAY_ID = "01"
+RECEIVE_WORKFLOWS = ["test_receive_addresses"]
+DEVICE_NAME = "test_sdp/elt/subarray_1"
+SCHEMA_VERSION = "0.2"
 LOG = tango_logging.get_logger()
 
 # -----------------------------------------------------------------------------
@@ -33,14 +32,15 @@ LOG = tango_logging.get_logger()
 # -----------------------------------------------------------------------------
 
 # Load scenarios from the specified feature file.
-scenarios('features/subarray.feature')
+scenarios("features/subarray.feature")
 
 
 # -----------------------------------------------------------------------------
 # Given steps: set the initial context of the system
 # -----------------------------------------------------------------------------
 
-@given('I have an SDPSubarray device', target_fixture='subarray_device')
+
+@given("I have an SDPSubarray device", target_fixture="subarray_device")
 def subarray_device(devices):
     """Get the SDPSubarray device proxy.
 
@@ -49,13 +49,13 @@ def subarray_device(devices):
     """
     device = device_utils.init_device(devices, DEVICE_NAME, wipe_config_db)
     device_utils.Monitor.close_all()
-    device_utils.Monitor(device, 'State')
-    device_utils.Monitor(device, 'obsState')
+    device_utils.Monitor(device, "State")
+    device_utils.Monitor(device, "obsState")
     return device
 
 
-@given(parsers.parse('the state is {state:S}'))
-@given('the state is <initial_state>')
+@given(parsers.parse("the state is {state:S}"))
+@given("the state is <initial_state>")
 def set_subarray_device_state(subarray_device, state: str):
     """Set the device state to the specified value.
 
@@ -70,15 +70,16 @@ def set_subarray_device_state(subarray_device, state: str):
 
     # Wait for the device state to update.
     LOG.info("Set state: wait for updates")
-    device_utils.wait_for_values(subarray_device,
-                                 ["State", "obsState"], [state, str(ObsState.EMPTY.value)])
+    device_utils.wait_for_values(
+        subarray_device, ["State", "obsState"], [state, str(ObsState.EMPTY.value)]
+    )
 
     # Check that state has been set correctly
     assert subarray_device.state() == tango.DevState.names[state]
 
 
-@given(parsers.parse('obsState is {initial_obs_state:S}'))
-@given('obsState is <initial_obs_state>')
+@given(parsers.parse("obsState is {initial_obs_state:S}"))
+@given("obsState is <initial_obs_state>")
 def set_subarray_device_obstate(subarray_device, initial_obs_state: str):
     """Set the obsState to the specified value.
 
@@ -94,8 +95,11 @@ def set_subarray_device_obstate(subarray_device, initial_obs_state: str):
 
     # Wait for the device state to update.
     LOG.info("Set obsState: wait for updates")
-    device_utils.wait_for_values(subarray_device, ["State", "obsState"],
-                                 [state, str(ObsState[initial_obs_state].value)])
+    device_utils.wait_for_values(
+        subarray_device,
+        ["State", "obsState"],
+        [state, str(ObsState[initial_obs_state].value)],
+    )
 
     # Check obsState has been set correctly
     assert subarray_device.ObsState == ObsState[initial_obs_state]
@@ -105,73 +109,64 @@ def set_subarray_device_obstate(subarray_device, initial_obs_state: str):
 # When steps: describe an event or action
 # -----------------------------------------------------------------------------
 
-@when(parsers.parse('I call {command:S}'))
-@when('I call <command>')
+
+@when(parsers.parse("I call {command:S}"))
+@when("I call <command>")
 def call_command(subarray_device, command):
     """Call an SDPSubarray command.
 
-     :param subarray_device: an SDPSubarray device
-     :param command: the name of the command
+    :param subarray_device: an SDPSubarray device
+    :param command: the name of the command
 
-     """
+    """
     # Check command is present
     command_list = subarray_device.get_command_list()
     assert command in command_list
-    # Get information about the command and the command itself
+    # Get information about the command
     command_config = subarray_device.get_command_config(command)
-    command_func = getattr(subarray_device, command)
 
     try:
         # Call the command
         if command_config.in_type == tango.DevVoid:
-            command_func()
+            config_str = None
         elif command_config.in_type == tango.DevString:
             config_str = read_command_argument(command)
-            command_func(config_str)
         else:
-            message = 'Cannot handle command with argument type {}'
+            message = "Cannot handle command with argument type {}"
             raise ValueError(message.format(command_config.in_type))
+
+        subarray_device.command_inout(command, cmd_param=config_str)
         subarray_device.exception = None
 
-        if command == 'AssignResources':
-            # Create the PB states, including the receive addresses for the receive
-            # workflow, which would be done by the PC and workflows
-            create_pb_states()
-
         # Wait for the device state to update.
-        LOG.info("Called command: wait for changes")
+        LOG.info(f"Called {command}: wait for changes, "
+                 f"obs state {ObsState(subarray_device.obsState.value).name}")
         device_utils.wait_for_changes(subarray_device, ["obsState"])
+        LOG.info(f"obs state is now {ObsState(subarray_device.obsState.value).name}")
 
     except tango.DevFailed as e:
         subarray_device.exception = e
 
 
-@when('I call <command> without an interface value in the JSON configuration')
+@when("I call <command> without an interface value in the JSON configuration")
 def call_command_without_interface(subarray_device, command):
     """Call an SDPSubarray command without an interface value.
 
-     :param subarray_device: an SDPSubarray device
-     :param command: the name of the command
+    :param subarray_device: an SDPSubarray device
+    :param command: the name of the command
 
-     """
+    """
     # Check command is present
     command_list = subarray_device.get_command_list()
     assert command in command_list
-    # Get the command itself
-    command_func = getattr(subarray_device, command)
 
     # Call the command after deleting the interface value in the configuration
     config = read_command_argument(command, decode=True)
-    del config['interface']
+    del config["interface"]
 
     try:
-        command_func(json.dumps(config))
+        subarray_device.command_inout(command, cmd_param=json.dumps(config))
         subarray_device.exception = None
-
-        if command == 'AssignResources':
-            # Create the PB states, including the receive addresses for the receive
-            # workflow, which would be done by the PC and workflows
-            create_pb_states()
 
         # Wait for the device state to update.
         LOG.info("Called command without value: wait for changes")
@@ -181,26 +176,24 @@ def call_command_without_interface(subarray_device, command):
         subarray_device.exception = e
 
 
-@when('I call <command> with an invalid JSON configuration')
+@when("I call <command> with an invalid JSON configuration")
 def call_command_with_invalid_json(subarray_device, command):
     """Call an SDPSubarray command without an interface value.
 
-     :param subarray_device: an SDPSubarray device
-     :param command: the name of the command
+    :param subarray_device: an SDPSubarray device
+    :param command: the name of the command
 
-     """
+    """
     # Check command is present
     command_list = subarray_device.get_command_list()
     assert command in command_list
-    # Get the command itself
-    command_func = getattr(subarray_device, command)
 
     # Read an invalid command argument
     config_str = read_command_argument(command, invalid=True)
 
     # Call the command
     try:
-        command_func(config_str)
+        subarray_device.command_inout(command, cmd_param=config_str)
         subarray_device.exception = None
     except tango.DevFailed as e:
         subarray_device.exception = e
@@ -212,15 +205,15 @@ def receive_addresses_written(subarray_device):
 
     for txn in CONFIG_DB_CLIENT.txn():
         subarray = txn.get_subarray(SUBARRAY_ID)
-        subarray['obs_state_target'] = "IDLE"
+        subarray["obs_state_target"] = "IDLE"
         txn.update_subarray(SUBARRAY_ID, subarray)
 
         pb_list = txn.list_processing_blocks()
         for pb_id in pb_list:
             pb = txn.get_processing_block(pb_id)
-            if pb.workflow['id'] in RECEIVE_WORKFLOWS:
+            if pb.workflow["id"] in RECEIVE_WORKFLOWS:
                 pb_state = txn.get_processing_block_state(pb_id)
-                pb_state['receive_addresses'] = receive_addresses
+                pb_state["receive_addresses"] = receive_addresses
                 txn.update_processing_block_state(pb_id, pb_state)
 
     LOG.info("Wait for transition to idle")
@@ -231,7 +224,8 @@ def receive_addresses_written(subarray_device):
 # Then steps: check the outcome is as expected
 # -----------------------------------------------------------------------------
 
-@then(parsers.parse('the state should be {expected:S}'))
+
+@then(parsers.parse("the state should be {expected:S}"))
 def device_state_equals(subarray_device, expected):
     """Check the Subarray device device state.
 
@@ -241,8 +235,10 @@ def device_state_equals(subarray_device, expected):
     assert subarray_device.state() == tango.DevState.names[expected]
 
 
-@then(parsers.parse('obsState should be {final_obs_state:S}'))
-@then('obsState should be <final_obs_state>')
+@then(parsers.parse("obsState should become {final_obs_state:S}"))
+@then(parsers.parse("obsState should be {final_obs_state:S}"))
+@then("obsState should become <final_obs_state>")
+@then("obsState should be <final_obs_state>")
 def obs_state_equals(subarray_device, final_obs_state):
     """Check the Subarray obsState attribute value.
 
@@ -252,7 +248,7 @@ def obs_state_equals(subarray_device, final_obs_state):
     assert subarray_device.obsState == ObsState[final_obs_state]
 
 
-@then(parsers.parse('adminMode should be {admin_mode:S}'))
+@then(parsers.parse("adminMode should be {admin_mode:S}"))
 def admin_mode_equals(subarray_device, admin_mode):
     """Check the Subarray adminMode value.
 
@@ -262,7 +258,7 @@ def admin_mode_equals(subarray_device, admin_mode):
     assert subarray_device.adminMode == AdminMode[admin_mode]
 
 
-@then(parsers.parse('healthState should be {health_state:S}'))
+@then(parsers.parse("healthState should be {health_state:S}"))
 def health_state_equals(subarray_device, health_state):
     """Check the Subarray healthState value.
 
@@ -272,7 +268,7 @@ def health_state_equals(subarray_device, health_state):
     assert subarray_device.healthState == HealthState[health_state]
 
 
-@then('the input type of <command> should be <input_type>')
+@then("the input type of <command> should be <input_type>")
 def command_input_type_equals(subarray_device, command, input_type):
     """Check input type of a command.
 
@@ -286,7 +282,7 @@ def command_input_type_equals(subarray_device, command, input_type):
     assert command_config.in_type == getattr(tango, input_type)
 
 
-@then('the output type of <command> should be <output_type>')
+@then("the output type of <command> should be <output_type>")
 def command_output_type_equals(subarray_device, command, output_type):
     """Check output type of a command.
 
@@ -300,7 +296,7 @@ def command_output_type_equals(subarray_device, command, output_type):
     assert command_config.out_type == getattr(tango, output_type)
 
 
-@then('the device should raise tango.DevFailed')
+@then("the device should raise tango.DevFailed")
 def command_raises_dev_failed(subarray_device):
     """Check that calling command raises a tango.DevFailed error.
 
@@ -310,7 +306,7 @@ def command_raises_dev_failed(subarray_device):
     assert e is not None and isinstance(e, tango.DevFailed)
 
 
-@then('the processing blocks should be in the config DB')
+@then("the processing blocks should be in the config DB")
 def processing_blocks_in_config_db():
     """Check that the config DB has the configured PBs.
 
@@ -328,7 +324,7 @@ def processing_blocks_in_config_db():
             assert pb == pb_expected
 
 
-@then('receiveAddresses should have the expected value')
+@then("receiveAddresses should have the expected value")
 def receive_addresses_expected(subarray_device):
     """Check that the receiveAddresses value is as expected.
 
@@ -344,11 +340,11 @@ def receive_addresses_expected(subarray_device):
     validate(recvaddrs_schema, receive_addresses, 2)
 
     # With interface version given as part of JSON object
-    receive_addresses['interface'] = recvaddrs_schema
+    receive_addresses["interface"] = recvaddrs_schema
     validate(None, receive_addresses, 2)
 
 
-@then('receiveAddresses should be an empty JSON object')
+@then("receiveAddresses should be an empty JSON object")
 def receive_addresses_empty(subarray_device):
     """Check that the receiveAddresses value is an empty JSON object.
 
@@ -359,30 +355,30 @@ def receive_addresses_empty(subarray_device):
     assert receive_addresses is None
 
 
-@then('the log should not contain a transaction ID')
+@then("the log should not contain a transaction ID")
 def log_contains_no_transaction_id():
     """Check that the log does not contain a transaction ID."""
-    assert not device_utils.LOG_LIST.text_in_tag('txn-', last=5)
+    assert not device_utils.LOG_LIST.text_in_tag("txn-", last=5)
 
 
-@then('the log should contain a transaction ID')
+@then("the log should contain a transaction ID")
 def log_contains_transaction_id():
     """Check that the log does contain a transaction ID."""
     # Allow some scope for some additional messages afterwards.
-    assert device_utils.LOG_LIST.text_in_tag('txn-', last=5)
+    assert device_utils.LOG_LIST.text_in_tag("txn-", last=5)
 
 
 # -----------------------------------------------------------------------------
 # Ancillary functions
 # -----------------------------------------------------------------------------
 
+
 def wipe_config_db():
     """Remove all entries in the config DB."""
-    CONFIG_DB_CLIENT.backend.delete('/pb', must_exist=False, recursive=True)
-    CONFIG_DB_CLIENT.backend.delete('/sb', must_exist=False, recursive=True)
-    CONFIG_DB_CLIENT.backend.delete('/subarray', must_exist=False,
-                                    recursive=True)
-    tango_logging.set_transaction_id('')
+    CONFIG_DB_CLIENT.backend.delete("/pb", must_exist=False, recursive=True)
+    CONFIG_DB_CLIENT.backend.delete("/sb", must_exist=False, recursive=True)
+    CONFIG_DB_CLIENT.backend.delete("/subarray", must_exist=False, recursive=True)
+    tango_logging.set_transaction_id("")
 
 
 def set_state_and_obs_state(state, obs_state):
@@ -396,32 +392,32 @@ def set_state_and_obs_state(state, obs_state):
     assert state in tango.DevState.names
     assert obs_state in ObsState.__members__
 
-    if obs_state != 'EMPTY':
+    if obs_state != "EMPTY":
         sbi, pbs = get_sbi_pbs()
-        sbi_id = sbi.get('id')
+        sbi_id = sbi.get("id")
     else:
         sbi_id = None
         sbi = {}
         pbs = []
 
-    if obs_state in ['READY', 'SCANNING']:
+    if obs_state in ["READY", "SCANNING"]:
         scan_type = get_scan_type()
     else:
         scan_type = None
 
-    if obs_state == 'SCANNING':
+    if obs_state == "SCANNING":
         scan_id = get_scan_id()
     else:
         scan_id = None
 
     subarray = {
-        'state': state,
-        'obs_state_target': obs_state,
-        'sbi_id': sbi_id,
-        'last_command': None
+        "state": state,
+        "obs_state_target": obs_state,
+        "sbi_id": sbi_id,
+        "last_command": None,
     }
-    sbi['scan_type'] = scan_type
-    sbi['scan_id'] = scan_id
+    sbi["scan_type"] = scan_type
+    sbi["scan_id"] = scan_id
 
     for txn in CONFIG_DB_CLIENT.txn():
         txn.update_subarray(SUBARRAY_ID, subarray)
@@ -447,46 +443,48 @@ def create_pb_states():
         for pb_id in pb_list:
             pb_state = txn.get_processing_block_state(pb_id)
             if pb_state is None:
-                pb_state = {'status': 'RUNNING'}
+                pb_state = {"status": "RUNNING"}
                 pb = txn.get_processing_block(pb_id)
-                if pb.workflow['id'] in RECEIVE_WORKFLOWS:
+                if pb.workflow["id"] in RECEIVE_WORKFLOWS:
                     sbi = txn.get_scheduling_block(pb.sbi_id)
-                    sbi['pb_receive_addresses'] = pb_id
+                    sbi["pb_receive_addresses"] = pb_id
                     txn.update_scheduling_block(pb.sbi_id, sbi)
-                    pb_state['receive_addresses'] = receive_addresses
+                    pb_state["receive_addresses"] = receive_addresses
                 txn.create_processing_block_state(pb_id, pb_state)
 
 
 def get_sbi_pbs():
     """Get SBI and PBs from AssignResources argument."""
-    config = read_command_argument('AssignResources', decode=True)
+    config = read_command_argument("AssignResources", decode=True)
 
-    sbi_id = config.get('id')
+    sbi_id = config.get("id")
     sbi = {
-        'id': sbi_id,
-        'subarray_id': SUBARRAY_ID,
-        'scan_types': config.get('scan_types'),
-        'pb_realtime': [],
-        'pb_batch': [],
-        'pb_receive_addresses': None,
-        'current_scan_type': None,
-        'scan_id': None,
-        'status': 'ACTIVE'
+        "id": sbi_id,
+        "subarray_id": SUBARRAY_ID,
+        "scan_types": config.get("scan_types"),
+        "pb_realtime": [],
+        "pb_batch": [],
+        "pb_receive_addresses": None,
+        "current_scan_type": None,
+        "scan_id": None,
+        "status": "ACTIVE",
     }
 
     pbs = []
-    for pbc in config.get('processing_blocks'):
-        pb_id = pbc.get('id')
-        wf_type = pbc.get('workflow').get('type')
-        sbi['pb_' + wf_type].append(pb_id)
-        if 'dependencies' in pbc:
-            dependencies = pbc.get('dependencies')
+    for pbc in config.get("processing_blocks"):
+        pb_id = pbc.get("id")
+        wf_type = pbc.get("workflow").get("type")
+        sbi["pb_" + wf_type].append(pb_id)
+        if "dependencies" in pbc:
+            dependencies = pbc.get("dependencies")
         else:
             dependencies = []
         pb = ska_sdp_config.ProcessingBlock(
-            pb_id, sbi_id, pbc.get('workflow'),
-            parameters=pbc.get('parameters'),
-            dependencies=dependencies
+            pb_id,
+            sbi_id,
+            pbc.get("workflow"),
+            parameters=pbc.get("parameters"),
+            dependencies=dependencies,
         )
         pbs.append(pb)
 
@@ -495,15 +493,15 @@ def get_sbi_pbs():
 
 def get_scan_type():
     """Get scan type from Configure argument."""
-    config = read_command_argument('Configure', decode=True)
-    scan_type = config.get('scan_type')
+    config = read_command_argument("Configure", decode=True)
+    scan_type = config.get("scan_type")
     return scan_type
 
 
 def get_scan_id():
     """Get scan ID from Scan argument."""
-    config = read_command_argument('Scan', decode=True)
-    scan_id = config.get('id')
+    config = read_command_argument("Scan", decode=True)
+    scan_id = config.get("id")
     return scan_id
 
 
@@ -516,15 +514,15 @@ def read_command_argument(name, invalid=False, decode=False):
 
     """
     if invalid:
-        fmt = 'command_{}_invalid.json'
+        fmt = "command_{}_invalid.json"
     else:
-        fmt = 'command_{}.json'
+        fmt = "command_{}.json"
     return read_json_data(fmt.format(name), decode=decode)
 
 
 def read_receive_addresses():
     """Read receive addresses from JSON file."""
-    return read_json_data('receive_addresses.json', decode=True)
+    return read_json_data("receive_addresses.json", decode=True)
 
 
 def read_json_data(filename, decode=False):
@@ -535,12 +533,12 @@ def read_json_data(filename, decode=False):
     :param decode: decode the JSON data into Python
 
     """
-    path = os.path.join(os.path.dirname(__file__), 'data', filename)
+    path = os.path.join(os.path.dirname(__file__), "data", filename)
     if os.path.exists(path):
-        with open(path, 'r') as file:
+        with open(path, "r") as file:
             data = file.read()
     else:
-        data = '{}'
+        data = "{}"
     if decode:
         data = json.loads(data)
     return data

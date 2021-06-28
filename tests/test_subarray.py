@@ -206,8 +206,11 @@ def receive_addresses_written(subarray_device):
     receive_addresses = read_receive_addresses()
 
     for txn in CONFIG_DB_CLIENT.txn():
+        # This is to force subarray into the correct logic processing.
+        # Possibly how that works should be reviewed.
         subarray = txn.get_subarray(SUBARRAY_ID)
         subarray["obs_state_target"] = "IDLE"
+        subarray["last_command"] = "AssignResources"
         txn.update_subarray(SUBARRAY_ID, subarray)
 
         pb_list = txn.list_processing_blocks()
@@ -218,8 +221,11 @@ def receive_addresses_written(subarray_device):
                 pb_state["receive_addresses"] = receive_addresses
                 txn.update_processing_block_state(pb_id, pb_state)
 
-    LOG.info("Wait for transition to idle")
-    device_utils.wait_for_values(subarray_device, ["obsState"], ["IDLE"])
+    LOG.info("Receive addresses: wait for transition to idle")
+    device_utils.wait_for_values(
+        subarray_device, ["obsState"], [str(ObsState.IDLE.value)]
+    )
+    LOG.info(f"obs state is now {ObsState(subarray_device.obsState.value).name}")
 
 
 # -----------------------------------------------------------------------------
@@ -412,9 +418,13 @@ def set_state_and_obs_state(state, obs_state):
     else:
         scan_id = None
 
+    # This causes multiple tests to fail.
+    #target = "IDLE" if obs_state == "RESOURCING" else obs_state
+    target = obs_state
+
     subarray = {
         "state": state,
-        "obs_state_target": obs_state,
+        "obs_state_target": target,
         "sbi_id": sbi_id,
         "last_command": None,
     }

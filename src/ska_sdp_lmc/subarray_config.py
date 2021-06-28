@@ -5,27 +5,18 @@ from typing import Any, Dict, List, Optional
 from tango import DevState
 
 from .attributes import ObsState
-from .base_config import new_config_db_client
+from .base_config import BaseConfig
 from .exceptions import raise_command_failed
 
 
-class SubarrayConfig:
+class SubarrayConfig(BaseConfig):
     """
     Subarray configuration interface.
     """
 
     def __init__(self, subarray_id: str):
-        self._client = new_config_db_client()
+        super().__init__()
         self._id = subarray_id
-
-    def txn(self):
-        """
-        Transaction loop.
-
-        :returns: configuration transaction iterator
-
-        """
-        return self._client.txn()
 
     def subarray(self, txn):
         """

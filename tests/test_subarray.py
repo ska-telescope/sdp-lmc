@@ -419,7 +419,7 @@ def set_state_and_obs_state(state, obs_state):
         scan_id = None
 
     # This causes multiple tests to fail.
-    #target = "IDLE" if obs_state == "RESOURCING" else obs_state
+    # target = "IDLE" if obs_state == "RESOURCING" else obs_state
     target = obs_state
 
     subarray = {

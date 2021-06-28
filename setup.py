@@ -31,7 +31,7 @@ setuptools.setup(
         "lmcbaseclasses>=0.8",
         "ska-sdp-config>=0.2.1",
         "ska-logging>=0.3.0",
-        "ska-telescope-model>=0.3.0",
+        "ska-telescope-model>=1.1",
     ],
     entry_points={
         "console_scripts": [

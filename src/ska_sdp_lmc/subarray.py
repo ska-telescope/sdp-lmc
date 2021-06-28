@@ -565,7 +565,6 @@ class SDPSubarray(SDPDevice):
                 subarray.obs_state_target == ObsState.IDLE
                 and subarray.command == "AssignResources"
             ):
-                LOG.info(f"receive addresses {subarray.receive_addresses}")
                 if subarray.receive_addresses is None:
                     obs_state = ObsState.RESOURCING
                 else:

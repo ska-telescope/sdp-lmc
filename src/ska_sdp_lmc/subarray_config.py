@@ -177,7 +177,6 @@ class SubarrayState:
     def scan_type(self, value: Optional[str]):
         if self._get("sbi_id") is not None and value is not None:
 
-            # TODO -MAKING CHANGES HERE
             # Check if scan type is in configuration
             scan_types = self._get_sbi("scan_types")
             st_ids = [st.get("scan_type_id") for st in scan_types]
@@ -248,12 +247,11 @@ class SubarrayState:
         scan_types = self._get_sbi("scan_types")
         # Check for redefinitions.
 
-        # TODO - MAKING CHANGES HERE
         st_ids = [st.get("scan_type_id") for st in scan_types]
         for scan_type in new_scan_types:
             st_id = scan_type.get("scan_type_id")
             if st_id in st_ids:
-                message = f"Scan type {st_id} is already defined KOIIIIII"
+                message = f"Scan type {st_id} is already defined"
                 raise_command_failed(message, __name__)
             else:
                 st_ids.append(st_id)

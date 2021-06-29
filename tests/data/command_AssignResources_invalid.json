@@ -1,5 +1,5 @@
 {
-  "interface": "https://schema.skatelescope.org/ska-sdp-assignres/0.3",
+  "interface": "https://schema.skao.int/ska-sdp-assignres/0.3",
   "max_length": 21600.0,
   "scan_types": [
     {

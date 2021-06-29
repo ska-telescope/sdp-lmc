@@ -199,11 +199,11 @@ def validate_scan(config_str):
     return scan_id
 
 
-def validate_json_config(config_json, schema_uri=None, schema_filename=None):
+def validate_json_config(config, schema_uri=None, schema_filename=None):
     """
     Validate a JSON configuration against a schema.
 
-    :param config_json: JSON configuration string
+    :param config: JSON configuration string
     :param schema_uri: Default schema from telescope model
     :param schema_filename: name of schema file in the 'schema'
             sub-directory
@@ -212,10 +212,7 @@ def validate_json_config(config_json, schema_uri=None, schema_filename=None):
 
     """
 
-    config = None
     try:
-        config = config_json
-
         if schema_filename is None:
             if "interface" in config.keys():
                 schema = config["interface"]

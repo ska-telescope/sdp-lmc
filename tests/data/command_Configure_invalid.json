@@ -1,5 +1,5 @@
 {
-  "interface": "https://schema.skatelescope.org/ska-sdp-configure/0.3",
+  "interface": "https://schema.skao.int/ska-sdp-configure/0.3",
   "new_scan_types": [
     {
       "channels": [

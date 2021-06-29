@@ -108,7 +108,7 @@ def test_subarray_config():
         assert subarray.scan_id is None
         assert subarray.receive_addresses is None
         # Use low-level SBI interface to check SBI
-        sbi = txn.get_scheduling_block("sbi-xxx")
+        sbi = txn.get_scheduling_block("eb-xxx")
         assert sbi["subarray_id"] == subarray_id
         assert sbi["status"] == "ACTIVE"
 
@@ -135,7 +135,7 @@ def test_subarray_config():
         assert subarray.scan_id is None
         assert subarray.receive_addresses is None
         # Use low-level SBI interface to check SBI
-        sbi = txn.get_scheduling_block("sbi-xxx")
+        sbi = txn.get_scheduling_block("eb-xxx")
         assert sbi["subarray_id"] is None
         assert sbi["status"] == "FINISHED"
 
@@ -152,7 +152,7 @@ def test_subarray_config():
         assert subarray.receive_addresses is None
 
         # Use low-level SBI interface to check SBI
-        sbi = txn.get_scheduling_block("sbi-yyy")
+        sbi = txn.get_scheduling_block("eb-yyy")
         assert sbi["subarray_id"] == subarray_id
         assert sbi["status"] == "ACTIVE"
 
@@ -179,7 +179,7 @@ def test_subarray_config():
         assert subarray.scan_id is None
         assert subarray.receive_addresses is None
         # Use low-level SBI interface to check SBI
-        sbi = txn.get_scheduling_block("sbi-yyy")
+        sbi = txn.get_scheduling_block("eb-yyy")
         assert sbi["subarray_id"] is None
         assert sbi["status"] == "CANCELLED"
 
@@ -203,7 +203,7 @@ def test_subarray_config():
 
 def fake_sbi_and_pbs(name):
     """Generate fake scheduling block instance and processing blocks."""
-    eb_id = "sbi-" + name
+    eb_id = "eb-" + name
     pb_id = "pb-" + name
     sbi = {
         "id": eb_id,
@@ -215,7 +215,7 @@ def fake_sbi_and_pbs(name):
         "status": "ACTIVE",
     }
 
-    # TODO - THIS NEEDS TO BE UPDATED TO WORK WITH CONFIG LIBRARY
+    # Temporary - configdb currently don't support new schema
     workflow = {"type": "realtime", "id": "test_workflow", "version": "0.1.0"}
     pb = ProcessingBlock(pb_id, eb_id, workflow, parameters={}, dependencies=[])
     return sbi, [pb]

@@ -159,7 +159,7 @@ def test_subarray_config():
     # Add a new scan type, select it and set scan ID
     for txn in config.txn():
         subarray = config.subarray(txn)
-        subarray.add_scan_types([{"scan_type_id": "zzz"}])
+        subarray.add_scan_types([{"id": "zzz"}])
         subarray.scan_type = "zzz"
         subarray.scan_id = 789
 
@@ -209,7 +209,7 @@ def fake_sbi_and_pbs(name):
         "id": eb_id,
         "subarray_id": None,
         "pb_receive_addresses": pb_id,
-        "scan_types": [{"scan_type_id": "xxx"}, {"scan_type_id": "yyy"}],
+        "scan_types": [{"id": "xxx"}, {"id": "yyy"}],
         "current_scan_type": None,
         "scan_id": None,
         "status": "ACTIVE",

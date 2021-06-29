@@ -179,7 +179,7 @@ class SubarrayState:
 
             # Check if scan type is in configuration
             scan_types = self._get_sbi("scan_types")
-            st_ids = [st.get("scan_type_id") for st in scan_types]
+            st_ids = [st.get("id") for st in scan_types]
             if value not in st_ids:
                 message = f"Scan type {value} is not defined"
                 raise_command_failed(message, __name__)
@@ -247,9 +247,9 @@ class SubarrayState:
         scan_types = self._get_sbi("scan_types")
         # Check for redefinitions.
 
-        st_ids = [st.get("scan_type_id") for st in scan_types]
+        st_ids = [st.get("id") for st in scan_types]
         for scan_type in new_scan_types:
-            st_id = scan_type.get("scan_type_id")
+            st_id = scan_type.get("id")
             if st_id in st_ids:
                 message = f"Scan type {st_id} is already defined"
                 raise_command_failed(message, __name__)

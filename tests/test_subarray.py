@@ -172,7 +172,7 @@ def call_command_without_interface(subarray_device, command):
     command_func = getattr(subarray_device, command)
 
     # Call the command after deleting the interface value in the configuration
-    config = read_command_argument(command, decode=True)
+    config = read_command_argument(command, decode=True, previous=True)
     del config["interface"]
     command_func(json.dumps(config))
 
@@ -200,8 +200,8 @@ def call_command_with_previous_config(subarray_device, command):
     command_func = getattr(subarray_device, command)
 
     # Call the command
-    config = read_command_argument(command, decode=True, previous=True)
-    command_func(json.dumps(config))
+    config = read_command_argument(command, previous=True)
+    command_func(config)
 
     if command == "AssignResources":
         # Create the PB states, including the receive addresses for the receive

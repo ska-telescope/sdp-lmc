@@ -1,10 +1,10 @@
 {
-  "interface": "https://schema.skatelescope.org/ska-sdp-assignres/0.2",
-  "id": "sbi-mvp01-20200619-00000",
+  "interface": "https://schema.skatelescope.org/ska-sdp-assignres/0.3",
+  "eb_id": "sbi-mvp01-20200619-00000",
   "max_length": 21600.0,
   "scan_types": [
     {
-      "id": "science_A",
+      "scan_type_id": "science_A",
       "coordinate_system": "ICRS", "ra": "02:42:40.771", "dec": "-00:00:47.84",
       "channels": [
         { "count": 744, "start": 0, "stride": 2, "freq_min": 0.35e9, "freq_max": 0.368e9, "link_map": [[0,0], [200,1], [744,2], [944,3]] },
@@ -12,7 +12,7 @@
       ]
     },
     {
-      "id": "calibration_B",
+      "scan_type_id": "calibration_B",
       "coordinate_system": "ICRS", "ra": "12:29:06.699", "dec": "02:03:08.598",
       "channels": [
         { "count": 744, "start": 0, "stride": 2, "freq_min": 0.35e9, "freq_max": 0.368e9, "link_map": [[0,0], [200,1], [744,2], [944,3]] },
@@ -22,29 +22,29 @@
   ],
   "processing_blocks": [
     {
-      "id": "pb-mvp01-20200619-00000",
-      "workflow": {"type": "realtime", "id": "test_receive_addresses", "version": "0.3.2"},
+      "pb_id": "pb-mvp01-20200619-00000",
+      "workflow": {"kind": "realtime", "name": "test_receive_addresses", "version": "0.3.2"},
       "parameters": {}
     },
     {
-      "id": "pb-mvp01-20200619-00001",
-      "workflow": {"type": "realtime", "id": "test_realtime", "version": "0.2.0"},
+      "pb_id": "pb-mvp01-20200619-00001",
+      "workflow": {"kind": "realtime", "name": "test_realtime", "version": "0.2.0"},
       "parameters": {}
     },
     {
-      "id": "pb-mvp01-20200619-00002",
-      "workflow": {"type": "batch", "id": "test_batch", "version": "0.2.0"},
+      "pb_id": "pb-mvp01-20200619-00002",
+      "workflow": {"kind": "batch", "name": "test_batch", "version": "0.2.0"},
       "parameters": {},
       "dependencies": [
-        {"pb_id": "pb-mvp01-20200619-00000", "type": ["visibilities"]}
+        {"pb_id": "pb-mvp01-20200619-00000", "kind": ["visibilities"]}
       ]
     },
     {
-      "id": "pb-mvp01-20200619-00003",
-      "workflow": {"type": "batch", "id": "test_dask", "version": "0.2.1"},
+      "pb_id": "pb-mvp01-20200619-00003",
+      "workflow": {"kind": "batch", "name": "test_dask", "version": "0.2.1"},
       "parameters": {},
       "dependencies": [
-        {"pb_id": "pb-mvp01-20200619-00002", "type": ["calibration"]}
+        {"pb_id": "pb-mvp01-20200619-00002", "kind": ["calibration"]}
       ]
     }
   ]

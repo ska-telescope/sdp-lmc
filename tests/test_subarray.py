@@ -468,9 +468,36 @@ def get_sbi_pbs():
     """Get SBI and PBs from AssignResources argument."""
     config = read_command_argument("AssignResources", decode=True)
 
-    sbi_id = config.get("id")
+
+
+    # # TODO - NEED TO DO SOME FIXING HEREE......
+    # if config.get("eb_id") is None:
+    #     scan_types = config.get("scan_types")
+    #
+    #     config['eb_id'] = config.pop('id')
+    #
+    #     for scan_type in scan_types:
+    #         scan_type['scan_type_id'] = scan_type.pop('id')
+    #
+    #     for pb in config.get("processing_blocks"):
+    #         pb['pb_id'] = pb.pop('id')
+    #
+    #         workflow = pb.get("workflow")
+    #         workflow['kind'] = workflow.pop('type')
+    #         workflow['name'] = workflow.pop('id')
+    #
+    #         wf_type = workflow.get("kind")
+    #
+    #         if "dependencies" in pb:
+    #             if wf_type == "batch":
+    #                 dependencies = pb.get("dependencies")
+    #
+    #                 for dependency in dependencies:
+    #                     dependency['kind'] = dependency.pop('type')
+
+    eb_id = config.get("eb_id")
     sbi = {
-        "id": sbi_id,
+        "id": eb_id,
         "subarray_id": SUBARRAY_ID,
         "scan_types": config.get("scan_types"),
         "pb_realtime": [],
@@ -483,22 +510,31 @@ def get_sbi_pbs():
 
     pbs = []
     for pbc in config.get("processing_blocks"):
-        pb_id = pbc.get("id")
-        wf_type = pbc.get("workflow").get("type")
+        pb_id = pbc.get("pb_id")
+        wf_type = pbc.get("workflow").get("kind")
         sbi["pb_" + wf_type].append(pb_id)
         if "dependencies" in pbc:
             dependencies = pbc.get("dependencies")
         else:
             dependencies = []
+
+        # TODO - NJT - NEW CHANGES, GET THIS FIXED PROPERLY
+        w = pbc.get("workflow")
+        w['type'] = w.pop('kind')
+        w['id'] = w.pop('name')
         pb = ska_sdp_config.ProcessingBlock(
             pb_id,
-            sbi_id,
-            pbc.get("workflow"),
+            eb_id,
+            w,
             parameters=pbc.get("parameters"),
             dependencies=dependencies,
         )
         pbs.append(pb)
 
+    print("SBI - ", sbi)
+
+
+    print("PB - ", pb)
     return sbi, pbs
 
 
@@ -512,7 +548,7 @@ def get_scan_type():
 def get_scan_id():
     """Get scan ID from Scan argument."""
     config = read_command_argument("Scan", decode=True)
-    scan_id = config.get("id")
+    scan_id = config.get("scan_type_id")
     return scan_id
 
 

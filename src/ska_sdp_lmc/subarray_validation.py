@@ -8,12 +8,12 @@ import jsonschema
 import ska_sdp_config
 
 from ska_telmodel.schema import validate
-from ska_telmodel.sdp.version import SDP_ASSIGNRES_PREFIX, SDP_CONFIG_PREFIX
+from ska_telmodel.sdp.version import SDP_ASSIGNRES_PREFIX, SDP_CONFIGURE_PREFIX
 from .exceptions import raise_command_failed
 
 MSG_VALIDATION_FAILED = "Configuration validation failed"
 LOG = logging.getLogger("ska_sdp_config")
-SCHEMA_VERSION = "0.2"
+SCHEMA_VERSION = "0.3"
 
 
 def validate_assign_resources(config_str):
@@ -47,10 +47,10 @@ def _parse_sbi_and_pbs(config):
     """
     # Create scheduling block instance
 
-    sbi_id = config.get("id")
+    eb_id = config.get("eb_id")
 
     sbi = {
-        "id": sbi_id,
+        "id": eb_id,
         "subarray_id": None,
         "scan_types": config.get("scan_types"),
         "pb_realtime": [],
@@ -67,12 +67,17 @@ def _parse_sbi_and_pbs(config):
 
     for pbc in config.get("processing_blocks"):
 
-        pb_id = pbc.get("id")
+        pb_id = pbc.get("pb_id")
         LOG.info("Parsing processing block %s", pb_id)
 
         # Get type of workflow and add the processing block ID to the
         # appropriate list.
         workflow = pbc.get("workflow")
+
+        # TODO - NJT - NEW CHANGES, GET THIS FIXED PROPERLY
+        workflow['type'] = workflow.pop('kind')
+        workflow['id'] = workflow.pop('name')
+
         wf_type = workflow.get("type")
         if wf_type == "realtime":
             sbi["pb_realtime"].append(pb_id)
@@ -97,7 +102,7 @@ def _parse_sbi_and_pbs(config):
         pbs.append(
             ska_sdp_config.ProcessingBlock(
                 pb_id,
-                sbi_id,
+                eb_id,
                 workflow,
                 parameters=parameters,
                 dependencies=dependencies,
@@ -116,7 +121,7 @@ def validate_configure(config_str):
     """
 
     # Validate the configuration string against the JSON schema
-    schema_uri = SDP_CONFIG_PREFIX + SCHEMA_VERSION
+    schema_uri = SDP_CONFIGURE_PREFIX + SCHEMA_VERSION
     config = validate_json_config(config_str, schema_uri=schema_uri)
 
     if config is None:
@@ -164,6 +169,11 @@ def validate_json_config(config_str, schema_uri=None, schema_filename=None):
     config = None
     try:
         config = json.loads(config_str)
+
+        # Checking if configuration string is the new version
+        if config.get("eb_id") is None:
+            config = _config_compatability(config)
+
         if schema_filename is None:
             if "interface" in config.keys():
                 schema = config["interface"]
@@ -196,3 +206,31 @@ def validate_json_config(config_str, schema_uri=None, schema_filename=None):
         LOG.debug("Successfully validated JSON configuration")
 
     return config
+
+def _config_compatability(config):
+    """Convert configuration string with previous version."""
+
+    LOG.info("I AM IN HEREEEEEEEE")
+    config['eb_id'] = config.pop('id')
+    for scan_type in config.get("scan_types"):
+        scan_type['scan_type_id'] = scan_type.pop('id')
+
+    for pb in config.get("processing_blocks"):
+        pb['pb_id'] = pb.pop('id')
+
+        workflow = pb.get("workflow")
+
+        # Temporary - configdb currently don't support new schema
+        workflow['kind'] = workflow.pop('type')
+        workflow['name'] = workflow.pop('id')
+        wf_type = workflow.get("kind")
+
+        if "dependencies" in pb:
+            if wf_type == "batch":
+                dependencies = pb.get("dependencies")
+
+                for dependency in dependencies:
+                    dependency['kind'] = dependency.pop('type')
+
+    return config
+

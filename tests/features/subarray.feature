@@ -272,7 +272,7 @@ Feature: SDP Subarray Device
 
 
 	#Commands that accepts 0.2 version of JSON configuration string
-	Scenario Outline: Command is accepted with previous JSON configuration
+	Scenario Outline: Command is accepted with previous JSON configuration string
 		Given I have an SDPSubarray device
 		When obsState is <initial_obs_state>
 		And I call <command> with previous JSON configuration

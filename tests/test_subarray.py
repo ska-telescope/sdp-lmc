@@ -25,7 +25,7 @@ SUBARRAY_ID = "01"
 RECEIVE_WORKFLOWS = ["test_receive_addresses"]
 DEVICE_NAME = "test_sdp/elt/subarray_1"
 LOG_LIST = test_logging.ListHandler()
-SCHEMA_VERSION = "0.2"
+SCHEMA_VERSION = "0.3"
 
 # -----------------------------------------------------------------------------
 # Scenarios : Specify what we want the software to do
@@ -172,9 +172,36 @@ def call_command_without_interface(subarray_device, command):
     command_func = getattr(subarray_device, command)
 
     # Call the command after deleting the interface value in the configuration
-    config = read_command_argument(command, decode=True)
+    config = read_command_argument(command, decode=True, previous=True)
     del config["interface"]
     command_func(json.dumps(config))
+
+    if command == "AssignResources":
+        # Create the PB states, including the receive addresses for the receive
+        # workflow, which would be done by the PC and workflows
+        create_pb_states()
+
+    # Update the device attributes
+    subarray_device.update_attributes()
+
+
+@when("I call <command> with previous JSON configuration")
+def call_command_with_previous_config(subarray_device, command):
+    """Call an SDPSubarray command without an interface value.
+
+    :param subarray_device: an SDPSubarray device
+    :param command: the name of the command
+
+    """
+    # Check command is present
+    command_list = subarray_device.get_command_list()
+    assert command in command_list
+    # Get the command itself
+    command_func = getattr(subarray_device, command)
+
+    # Call the command
+    config = read_command_argument(command, previous=True)
+    command_func(config)
 
     if command == "AssignResources":
         # Create the PB states, including the receive addresses for the receive
@@ -468,9 +495,10 @@ def get_sbi_pbs():
     """Get SBI and PBs from AssignResources argument."""
     config = read_command_argument("AssignResources", decode=True)
 
-    sbi_id = config.get("id")
+    # Checking if configuration string is the new version
+    eb_id = config.get("eb_id")
     sbi = {
-        "id": sbi_id,
+        "id": eb_id,
         "subarray_id": SUBARRAY_ID,
         "scan_types": config.get("scan_types"),
         "pb_realtime": [],
@@ -483,17 +511,22 @@ def get_sbi_pbs():
 
     pbs = []
     for pbc in config.get("processing_blocks"):
-        pb_id = pbc.get("id")
-        wf_type = pbc.get("workflow").get("type")
+        pb_id = pbc.get("pb_id")
+        wf_type = pbc.get("workflow").get("kind")
         sbi["pb_" + wf_type].append(pb_id)
         if "dependencies" in pbc:
             dependencies = pbc.get("dependencies")
         else:
             dependencies = []
+
+        # Temporary - configdb currently don't support new schema
+        w = pbc.get("workflow")
+        w["type"] = w.pop("kind")
+        w["id"] = w.pop("name")
         pb = ska_sdp_config.ProcessingBlock(
             pb_id,
-            sbi_id,
-            pbc.get("workflow"),
+            eb_id,
+            w,
             parameters=pbc.get("parameters"),
             dependencies=dependencies,
         )
@@ -512,11 +545,11 @@ def get_scan_type():
 def get_scan_id():
     """Get scan ID from Scan argument."""
     config = read_command_argument("Scan", decode=True)
-    scan_id = config.get("id")
+    scan_id = config.get("scan_type_id")
     return scan_id
 
 
-def read_command_argument(name, invalid=False, decode=False):
+def read_command_argument(name, invalid=False, decode=False, previous=False):
     """Read command argument from JSON file.
 
     :param name: name of command
@@ -526,6 +559,8 @@ def read_command_argument(name, invalid=False, decode=False):
     """
     if invalid:
         fmt = "command_{}_invalid.json"
+    elif previous:
+        fmt = "command_{}_previous.json"
     else:
         fmt = "command_{}.json"
     return read_json_data(fmt.format(name), decode=decode)

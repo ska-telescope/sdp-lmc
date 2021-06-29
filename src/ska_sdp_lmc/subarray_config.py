@@ -176,6 +176,7 @@ class SubarrayState:
     @scan_type.setter
     def scan_type(self, value: Optional[str]):
         if self._get("sbi_id") is not None and value is not None:
+
             # Check if scan type is in configuration
             scan_types = self._get_sbi("scan_types")
             st_ids = [st.get("id") for st in scan_types]
@@ -245,6 +246,7 @@ class SubarrayState:
             return
         scan_types = self._get_sbi("scan_types")
         # Check for redefinitions.
+
         st_ids = [st.get("id") for st in scan_types]
         for scan_type in new_scan_types:
             st_id = scan_type.get("id")

@@ -263,6 +263,7 @@ class SDPSubarray(SDPDevice):
         :param config: JSON string containing resource configuration
 
         """
+
         # Validate and parse the configuration
         sbi, pbs = validate_assign_resources(config)
 

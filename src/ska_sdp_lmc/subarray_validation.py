@@ -1,10 +1,8 @@
 """Subarray command validation and parsing."""
 
-import os
 import json
 import logging
 
-import jsonschema
 import ska_sdp_config
 
 from ska_telmodel.schema import validate

@@ -8,6 +8,7 @@ import jsonschema
 import ska_sdp_config
 
 from ska_telmodel.schema import validate
+from ska_telmodel.sdp.version import check_sdp_interface_version
 from ska_telmodel.sdp.version import (
     SDP_ASSIGNRES_PREFIX,
     SDP_CONFIGURE_PREFIX,
@@ -18,6 +19,7 @@ from .exceptions import raise_command_failed
 MSG_VALIDATION_FAILED = "Configuration validation failed"
 LOG = logging.getLogger("ska_sdp_config")
 SCHEMA_VERSION = "0.3"
+OLD_SCHEMA_VERSION = "0.2"
 
 
 def validate_assign_resources(config_str):
@@ -31,27 +33,30 @@ def validate_assign_resources(config_str):
     config_json = json.loads(config_str)
     schema_uri = SDP_ASSIGNRES_PREFIX + SCHEMA_VERSION
 
-    # Check if configuration string is the new schema version
-    if config_json.get("eb_id") is None:
+    if "interface" in config_json.keys():
+        schema = config_json["interface"]
 
-        config_json["interface"] = schema_uri
-        config_json["eb_id"] = config_json.pop("id")
-        for scan_type in config_json.get("scan_types"):
-            scan_type["scan_type_id"] = scan_type.pop("id")
+        # Check the schema version
+        # Check if configuration string is the new schema version
+        if check_sdp_interface_version(schema) == OLD_SCHEMA_VERSION:
+            config_json["interface"] = schema_uri
+            config_json["eb_id"] = config_json.pop("id")
+            for scan_type in config_json.get("scan_types"):
+                scan_type["scan_type_id"] = scan_type.pop("id")
 
-        for pb in config_json.get("processing_blocks"):
-            pb["pb_id"] = pb.pop("id")
-            workflow = pb.get("workflow")
-            workflow["kind"] = workflow.pop("type")
-            workflow["name"] = workflow.pop("id")
-            wf_type = workflow.get("kind")
+            for pb in config_json.get("processing_blocks"):
+                pb["pb_id"] = pb.pop("id")
+                workflow = pb.get("workflow")
+                workflow["kind"] = workflow.pop("type")
+                workflow["name"] = workflow.pop("id")
+                wf_type = workflow.get("kind")
 
-            if "dependencies" in pb:
-                if wf_type == "batch":
-                    dependencies = pb.get("dependencies")
+                if "dependencies" in pb:
+                    if wf_type == "batch":
+                        dependencies = pb.get("dependencies")
 
-                    for dependency in dependencies:
-                        dependency["kind"] = dependency.pop("type")
+                        for dependency in dependencies:
+                            dependency["kind"] = dependency.pop("type")
 
     # Validate the configuration string against the JSON schema
     schema_uri = SDP_ASSIGNRES_PREFIX + SCHEMA_VERSION
@@ -148,18 +153,22 @@ def validate_configure(config_str):
 
     """
 
-    # Validate the configuration string against the JSON schema
     schema_uri = SDP_CONFIGURE_PREFIX + SCHEMA_VERSION
     config_json = json.loads(config_str)
 
-    # Check if configuration string is the new schema version
-    if "new_scan_types" in config_json:
-        new_scan_types = config_json.get("new_scan_types")
-        for new_scan_type in new_scan_types:
-            if new_scan_type.get("scan_type_id") is None:
-                config_json["interface"] = schema_uri
-                new_scan_type["scan_type_id"] = new_scan_type.pop("id")
+    if "interface" in config_json.keys():
+        schema = config_json["interface"]
 
+        # Check the schema version
+        # Check if configuration string is the new schema version
+        if check_sdp_interface_version(schema) == OLD_SCHEMA_VERSION:
+            new_scan_types = config_json.get("new_scan_types")
+            for new_scan_type in new_scan_types:
+                if new_scan_type.get("scan_type_id") is None:
+                    config_json["interface"] = schema_uri
+                    new_scan_type["scan_type_id"] = new_scan_type.pop("id")
+
+    # Validate the configuration string against the JSON schema
     config = validate_json_config(config_json, schema_uri=schema_uri)
 
     if config is None:
@@ -179,15 +188,21 @@ def validate_scan(config_str):
     :returns: update to be applied to SBI
 
     """
-    # Validate the configuration string against the JSON schema
+
     schema_uri = SDP_SCAN_PREFIX + SCHEMA_VERSION
     config_json = json.loads(config_str)
 
-    # Check if configuration string is the new schema version
-    if config_json.get("scan_id") is None:
-        config_json["interface"] = schema_uri
-        config_json["scan_id"] = config_json.pop("id")
+    if "interface" in config_json.keys():
+        schema = config_json["interface"]
 
+        # Check the schema version
+        # Check if configuration string is the new schema version
+        schema_version = check_sdp_interface_version(schema)
+        if schema_version == OLD_SCHEMA_VERSION:
+            config_json["interface"] = schema_uri
+            config_json["scan_id"] = config_json.pop("id")
+
+    # Validate the configuration string against the JSON schema
     config = validate_json_config(config_json, schema_uri=schema_uri)
 
     if config is None:

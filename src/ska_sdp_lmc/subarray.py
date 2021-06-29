@@ -5,7 +5,6 @@ import signal
 import json
 import sys
 
-import logging
 from tango import AttrWriteType, DevState
 from tango.server import attribute, run
 
@@ -265,8 +264,6 @@ class SDPSubarray(SDPDevice):
 
         """
 
-        #TODO -NJT. A function here to convert new schemas or old schemas
-
         # Validate and parse the configuration
         sbi, pbs = validate_assign_resources(config)
 
@@ -276,7 +273,6 @@ class SDPSubarray(SDPDevice):
             subarray.transaction_id = transaction_id
             subarray.obs_state_target = ObsState.IDLE
             subarray.create_sbi_and_pbs(sbi, pbs)
-
 
     def is_ReleaseResources_allowed(self):
         """Check if the ReleaseResources command is allowed."""

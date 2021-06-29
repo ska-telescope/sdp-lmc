@@ -2,7 +2,6 @@
 
 from typing import Any, Dict, List, Optional
 
-import logging
 from tango import DevState
 
 from .attributes import ObsState
@@ -181,8 +180,6 @@ class SubarrayState:
             # TODO -MAKING CHANGES HERE
             # Check if scan type is in configuration
             scan_types = self._get_sbi("scan_types")
-            logging.info("HELLOOOOOO")
-            logging.info((scan_types))
             st_ids = [st.get("scan_type_id") for st in scan_types]
             if value not in st_ids:
                 message = f"Scan type {value} is not defined"
@@ -251,7 +248,7 @@ class SubarrayState:
         scan_types = self._get_sbi("scan_types")
         # Check for redefinitions.
 
-        #TODO - MAKING CHANGES HERE
+        # TODO - MAKING CHANGES HERE
         st_ids = [st.get("scan_type_id") for st in scan_types]
         for scan_type in new_scan_types:
             st_id = scan_type.get("scan_type_id")

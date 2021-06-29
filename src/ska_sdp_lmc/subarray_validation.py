@@ -8,7 +8,11 @@ import jsonschema
 import ska_sdp_config
 
 from ska_telmodel.schema import validate
-from ska_telmodel.sdp.version import SDP_ASSIGNRES_PREFIX, SDP_CONFIGURE_PREFIX
+from ska_telmodel.sdp.version import (
+    SDP_ASSIGNRES_PREFIX,
+    SDP_CONFIGURE_PREFIX,
+    SDP_SCAN_PREFIX,
+)
 from .exceptions import raise_command_failed
 
 MSG_VALIDATION_FAILED = "Configuration validation failed"
@@ -24,9 +28,34 @@ def validate_assign_resources(config_str):
 
     """
 
+    config_json = json.loads(config_str)
+    schema_uri = SDP_ASSIGNRES_PREFIX + SCHEMA_VERSION
+
+    # Check if configuration string is the new schema version
+    if config_json.get("eb_id") is None:
+
+        config_json["interface"] = schema_uri
+        config_json["eb_id"] = config_json.pop("id")
+        for scan_type in config_json.get("scan_types"):
+            scan_type["scan_type_id"] = scan_type.pop("id")
+
+        for pb in config_json.get("processing_blocks"):
+            pb["pb_id"] = pb.pop("id")
+            workflow = pb.get("workflow")
+            workflow["kind"] = workflow.pop("type")
+            workflow["name"] = workflow.pop("id")
+            wf_type = workflow.get("kind")
+
+            if "dependencies" in pb:
+                if wf_type == "batch":
+                    dependencies = pb.get("dependencies")
+
+                    for dependency in dependencies:
+                        dependency["kind"] = dependency.pop("type")
+
     # Validate the configuration string against the JSON schema
     schema_uri = SDP_ASSIGNRES_PREFIX + SCHEMA_VERSION
-    config = validate_json_config(config_str, schema_uri=schema_uri)
+    config = validate_json_config(config_json, schema_uri=schema_uri)
 
     if config is None:
         # Validation has failed, so raise an error
@@ -62,7 +91,6 @@ def _parse_sbi_and_pbs(config):
     }
 
     # Loop over the processing block configurations
-
     pbs = []
 
     for pbc in config.get("processing_blocks"):
@@ -74,9 +102,9 @@ def _parse_sbi_and_pbs(config):
         # appropriate list.
         workflow = pbc.get("workflow")
 
-        # TODO - NJT - NEW CHANGES, GET THIS FIXED PROPERLY
-        workflow['type'] = workflow.pop('kind')
-        workflow['id'] = workflow.pop('name')
+        # Temporary - configdb currently don't support new schema
+        workflow["type"] = workflow.pop("kind")
+        workflow["id"] = workflow.pop("name")
 
         wf_type = workflow.get("type")
         if wf_type == "realtime":
@@ -122,7 +150,17 @@ def validate_configure(config_str):
 
     # Validate the configuration string against the JSON schema
     schema_uri = SDP_CONFIGURE_PREFIX + SCHEMA_VERSION
-    config = validate_json_config(config_str, schema_uri=schema_uri)
+    config_json = json.loads(config_str)
+
+    # Check if configuration string is the new schema version
+    if "new_scan_types" in config_json:
+        new_scan_types = config_json.get("new_scan_types")
+        for new_scan_type in new_scan_types:
+            if new_scan_type.get("scan_type_id") is None:
+                config_json["interface"] = schema_uri
+                new_scan_type["scan_type_id"] = new_scan_type.pop("id")
+
+    config = validate_json_config(config_json, schema_uri=schema_uri)
 
     if config is None:
         # Validation has failed, so raise an error
@@ -142,22 +180,30 @@ def validate_scan(config_str):
 
     """
     # Validate the configuration string against the JSON schema
-    config = validate_json_config(config_str, schema_filename="scan.json")
+    schema_uri = SDP_SCAN_PREFIX + SCHEMA_VERSION
+    config_json = json.loads(config_str)
+
+    # Check if configuration string is the new schema version
+    if config_json.get("scan_id") is None:
+        config_json["interface"] = schema_uri
+        config_json["scan_id"] = config_json.pop("id")
+
+    config = validate_json_config(config_json, schema_uri=schema_uri)
 
     if config is None:
         # Validation has failed, so raise an error
         raise_command_failed(MSG_VALIDATION_FAILED, __name__)
 
-    scan_id = config.get("id")
+    scan_id = config.get("scan_id")
 
     return scan_id
 
 
-def validate_json_config(config_str, schema_uri=None, schema_filename=None):
+def validate_json_config(config_json, schema_uri=None, schema_filename=None):
     """
     Validate a JSON configuration against a schema.
 
-    :param config_str: JSON configuration string
+    :param config_json: JSON configuration string
     :param schema_uri: Default schema from telescope model
     :param schema_filename: name of schema file in the 'schema'
             sub-directory
@@ -168,11 +214,7 @@ def validate_json_config(config_str, schema_uri=None, schema_filename=None):
 
     config = None
     try:
-        config = json.loads(config_str)
-
-        # Checking if configuration string is the new version
-        if config.get("eb_id") is None:
-            config = _config_compatability(config)
+        config = config_json
 
         if schema_filename is None:
             if "interface" in config.keys():
@@ -206,31 +248,3 @@ def validate_json_config(config_str, schema_uri=None, schema_filename=None):
         LOG.debug("Successfully validated JSON configuration")
 
     return config
-
-def _config_compatability(config):
-    """Convert configuration string with previous version."""
-
-    LOG.info("I AM IN HEREEEEEEEE")
-    config['eb_id'] = config.pop('id')
-    for scan_type in config.get("scan_types"):
-        scan_type['scan_type_id'] = scan_type.pop('id')
-
-    for pb in config.get("processing_blocks"):
-        pb['pb_id'] = pb.pop('id')
-
-        workflow = pb.get("workflow")
-
-        # Temporary - configdb currently don't support new schema
-        workflow['kind'] = workflow.pop('type')
-        workflow['name'] = workflow.pop('id')
-        wf_type = workflow.get("kind")
-
-        if "dependencies" in pb:
-            if wf_type == "batch":
-                dependencies = pb.get("dependencies")
-
-                for dependency in dependencies:
-                    dependency['kind'] = dependency.pop('type')
-
-    return config
-

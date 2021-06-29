@@ -52,13 +52,13 @@ def validate_assign_resources(config_str):
             if "coordinate_system" in scan_type:
                 scan_type["reference_frame"] = scan_type.pop("coordinate_system")
 
-        for pb in config.get("processing_blocks"):
-            pb["pb_id"] = pb.pop("id")
-            workflow = pb.get("workflow")
+        for pbc in config.get("processing_blocks"):
+            pbc["pb_id"] = pbc.pop("id")
+            workflow = pbc.get("workflow")
             workflow["kind"] = workflow.pop("type")
             workflow["name"] = workflow.pop("id")
-            if "dependencies" in pb:
-                dependencies = pb.get("dependencies")
+            if "dependencies" in pbc:
+                dependencies = pbc.get("dependencies")
                 for dependency in dependencies:
                     dependency["kind"] = dependency.pop("type")
 

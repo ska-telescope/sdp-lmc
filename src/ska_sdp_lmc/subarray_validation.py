@@ -16,7 +16,7 @@ from ska_telmodel.sdp.version import (
 )
 from .exceptions import raise_command_failed
 
-LOG = logging.getLogger("ska_sdp_config")
+LOG = logging.getLogger("ska_sdp_lmc")
 
 MSG_VALIDATION_FAILED = "Configuration validation failed"
 

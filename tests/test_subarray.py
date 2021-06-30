@@ -497,10 +497,13 @@ def get_sbi_pbs():
 
     # Checking if configuration string is the new version
     eb_id = config.get("eb_id")
+    scan_types = config.get("scan_types")
+    for scan_type in scan_types:
+        scan_type["id"] = scan_type.pop("scan_type_id")
     sbi = {
         "id": eb_id,
         "subarray_id": SUBARRAY_ID,
-        "scan_types": config.get("scan_types"),
+        "scan_types": scan_types,
         "pb_realtime": [],
         "pb_batch": [],
         "pb_receive_addresses": None,
@@ -519,7 +522,7 @@ def get_sbi_pbs():
         else:
             dependencies = []
 
-        # Temporary - configdb currently don't support new schema
+        # Temporary - config DB currently doesn't support new schema
         w = pbc.get("workflow")
         w["type"] = w.pop("kind")
         w["id"] = w.pop("name")
@@ -545,7 +548,7 @@ def get_scan_type():
 def get_scan_id():
     """Get scan ID from Scan argument."""
     config = read_command_argument("Scan", decode=True)
-    scan_id = config.get("scan_type_id")
+    scan_id = config.get("scan_id")
     return scan_id
 
 

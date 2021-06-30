@@ -186,9 +186,6 @@ def validate_configure(config_str):
         for new_scan_type in new_scan_types:
             new_scan_type["id"] = new_scan_type.pop("scan_type_id")
 
-    print(new_scan_types)
-    print(scan_type)
-
     return new_scan_types, scan_type
 
 

@@ -245,8 +245,8 @@ class SubarrayState:
         if new_scan_types is None:
             return
         scan_types = self._get_sbi("scan_types")
-        # Check for redefinitions.
 
+        # Check for redefinitions.
         st_ids = [st.get("id") for st in scan_types]
         for scan_type in new_scan_types:
             st_id = scan_type.get("id")

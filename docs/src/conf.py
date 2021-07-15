@@ -19,9 +19,11 @@
 #
 
 autodoc_mock_imports = [
-    "jsonschema",
-    "ska",
     "ska_sdp_config",
+    "ska_ser_logging",
+    "ska_ser_log_transactions",
+    "ska_tango_base",
+    "ska_telmodel",
     "tango",
 ]
 
@@ -73,7 +75,6 @@ extensions = [
     "sphinx.ext.ifconfig",
     "sphinx.ext.viewcode",
     "sphinx.ext.githubpages",
-    "m2r2",
 ]
 
 # Add any paths that contain templates here, relative to this directory.

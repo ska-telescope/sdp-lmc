@@ -128,13 +128,11 @@ Feature: SDP Subarray Device
 
 	#Assign resources transition from intermediate state.
 	Scenario: Receive addresses cause transition to IDLE
-        Given I have an SDPSubarray device
+		Given I have an SDPSubarray device
 		And obsState is RESOURCING
-
 		When the receive processing block writes the receive addresses into its state
-
-        Then obsState should become IDLE
-        And receiveAddresses should have the expected value
+		Then obsState should become IDLE
+		And receiveAddresses should have the expected value
 
 
 	#Commands are rejected when called in obsStates where they are not allowed.

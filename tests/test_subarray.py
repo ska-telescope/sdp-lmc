@@ -206,13 +206,6 @@ def receive_addresses_written(subarray_device):
     receive_addresses = read_receive_addresses()
 
     for txn in CONFIG_DB_CLIENT.txn():
-        # This is to force subarray into the correct logic processing.
-        # Possibly how that works should be reviewed.
-        subarray = txn.get_subarray(SUBARRAY_ID)
-        subarray["obs_state_target"] = "IDLE"
-        subarray["last_command"] = "AssignResources"
-        txn.update_subarray(SUBARRAY_ID, subarray)
-
         pb_list = txn.list_processing_blocks()
         for pb_id in pb_list:
             pb = txn.get_processing_block(pb_id)
@@ -400,13 +393,21 @@ def set_state_and_obs_state(state, obs_state):
     assert state in tango.DevState.names
     assert obs_state in ObsState.__members__
 
-    if obs_state != "EMPTY":
-        sbi, pbs = get_sbi_pbs()
-        sbi_id = sbi.get("id")
+    if obs_state == "RESOURCING":
+        # Transitional obs_state: target is IDLE, but receive workflow has not
+        # written receive addresses into PB state.
+        obs_state_target = "IDLE"
     else:
+        obs_state_target = obs_state
+
+    if obs_state == "EMPTY":
+        # No SBI or PBs associated with subarray
         sbi_id = None
         sbi = {}
         pbs = []
+    else:
+        sbi, pbs = get_sbi_pbs()
+        sbi_id = sbi.get("id")
 
     if obs_state in ["READY", "SCANNING"]:
         scan_type = get_scan_type()
@@ -418,13 +419,9 @@ def set_state_and_obs_state(state, obs_state):
     else:
         scan_id = None
 
-    # This causes multiple tests to fail.
-    # target = "IDLE" if obs_state == "RESOURCING" else obs_state
-    target = obs_state
-
     subarray = {
         "state": state,
-        "obs_state_target": target,
+        "obs_state_target": obs_state_target,
         "sbi_id": sbi_id,
         "last_command": None,
     }
@@ -438,14 +435,23 @@ def set_state_and_obs_state(state, obs_state):
         for pb in pbs:
             txn.create_processing_block(pb)
 
-    create_pb_states()
+    if obs_state == "RESOURCING":
+        # Create PB states without receive addresses
+        create_pb_states(recvaddrs=False)
+    elif obs_state != "EMPTY":
+        # Create PB states with receive addresses
+        create_pb_states(recvaddrs=True)
 
 
-def create_pb_states():
-    """Create PB states in the config DB.
+def create_pb_states(recvaddrs=True):
+    """
+    Create PB states in the config DB.
 
-    This creates the PB states with status = RUNNING, and for any workflow
-    matching the list of receive workflows, it adds the receive addresses.
+    This creates the PB states with status = RUNNING. If required, it adds the
+    receive addresses to the state of any workflow matching the list of receive
+    workflows.
+
+    :param recvaddrs: write receive addresses into receive workflow PB states
 
     """
     receive_addresses = read_receive_addresses()
@@ -461,7 +467,8 @@ def create_pb_states():
                     sbi = txn.get_scheduling_block(pb.sbi_id)
                     sbi["pb_receive_addresses"] = pb_id
                     txn.update_scheduling_block(pb.sbi_id, sbi)
-                    pb_state["receive_addresses"] = receive_addresses
+                    if recvaddrs:
+                        pb_state["receive_addresses"] = receive_addresses
                 txn.create_processing_block_state(pb_id, pb_state)
 
 

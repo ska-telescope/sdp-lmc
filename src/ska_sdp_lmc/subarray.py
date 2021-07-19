@@ -561,10 +561,7 @@ class SDPSubarray(SDPDevice):
             self._set_scan_type(subarray.scan_type if subarray.scan_type else "null")
             self._set_scan_id(subarray.scan_id if subarray.scan_id else 0)
 
-            if (
-                subarray.obs_state_target == ObsState.IDLE
-                and subarray.command == "AssignResources"
-            ):
+            if subarray.obs_state_target == ObsState.IDLE:
                 if subarray.receive_addresses is None:
                     obs_state = ObsState.RESOURCING
                 else:

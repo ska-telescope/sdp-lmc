@@ -3,24 +3,21 @@ variables:
 
 workflow:
   rules:
-    - if: $CI_MERGE_REQUEST_ID
     - if: $CI_COMMIT_BRANCH
     - if: $CI_COMMIT_TAG
 
 stages:
   - test
-  - build
   - publish
 
-image: python:latest
+image: artefact.skao.int/ska-tango-images-pytango-builder:9.3.10
 
 # ============================================================================
-# Test and lint Python package
+# Test and lint Python package and build documentation
 # ============================================================================
 
 test:
   stage: test
-  image: nexus.engageska-portugal.pt/ska-docker/ska-python-buildenv:latest
   before_script:
     - pip3 install -r requirements.txt -r requirements-test.txt
   script:
@@ -32,16 +29,13 @@ test:
   artifacts:
     paths:
       - build
-      - cucumber.json
     expire_in: 1 week
     when: always
 
 lint:
   stage: test
-  image: nexus.engageska-portugal.pt/ska-docker/ska-python-buildenv:latest
   before_script:
     - pip3 install -r requirements.txt -r requirements-test.txt
-    - pip3 install black
   script:
     - pylint --exit-zero --output-format=parseable src/ska_sdp_lmc
     - pylint --exit-zero --output-format=pylint2junit.JunitReporter src/ska_sdp_lmc > linting.xml
@@ -55,70 +49,65 @@ lint:
     expire_in: 1 week
     when: always
 
+docs:
+  stage: test
+  image: python:3.9
+  before_script:
+    - pip install -r docs/requirements.txt
+  script:
+    - cd docs
+    - make html
+  artifacts:
+    paths:
+      - docs/build/html
+    expire_in: 1 week
+    when: always
+
 # ============================================================================
-# Build Docker development image
+# Build and publish Docker image
 # ============================================================================
 
-build:
-  stage: build
-  variables:
-    GIT_VERSION: ${CI_COMMIT_SHORT_SHA}
-    PREFIX_BUILD: ${CI_REGISTRY_IMAGE}
-  image: docker:stable
+.publish:
+  stage: publish
+  image: docker:20.10.7
   services:
-    - docker:dind
+    - docker:20.10.7-dind
   before_script:
     - apk add make git
-    - docker login -u $CI_REGISTRY_USER -p $CI_REGISTRY_PASSWORD $CI_REGISTRY
+    - echo $PASSWORD | docker login --username $USERNAME --password-stdin $REGISTRY
   script:
     - make build
     - make push
 
-# ============================================================================
-# Tag and publish Docker image (master only)
-# ============================================================================
+# Publish development version to GitLab on non-tag commit
 
-publish:
-  stage: publish
-  dependencies:
-    - build
+publish-dev:
+  extends: .publish
   variables:
-    GIT_VERSION: ${CI_COMMIT_SHORT_SHA}
-    PREFIX_BUILD: ${CI_REGISTRY_IMAGE}
-    PREFIX_RELEASE: ${DOCKER_REGISTRY_HOST}/sdp-prototype
-  image: docker:stable
-  services:
-    - docker:dind
+    REGISTRY: $CI_REGISTRY
+    USERNAME: $CI_REGISTRY_USER
+    PASSWORD: $CI_REGISTRY_PASSWORD
+    PREFIX: $CI_REGISTRY_IMAGE
+    GITHASH: $CI_COMMIT_SHORT_SHA
+  rules:
+    - if: '$CI_COMMIT_TAG == null || $CI_COMMIT_TAG == ""'
+
+# Publish release to artefact repository on tag commit on master
+
+publish-release:
+  extends: .publish
+  variables:
+    REGISTRY: $CAR_OCI_REGISTRY_HOST
+    USERNAME: $CAR_OCI_REGISTRY_USERNAME
+    PASSWORD: $CAR_OCI_REGISTRY_PASSWORD
+    PREFIX: $CAR_OCI_REGISTRY_HOST
+    RELEASE: "true"
   only:
     variables:
        - $CI_COMMIT_MESSAGE =~ /^.+$/ # Confirm tag message exists
        - $CI_COMMIT_TAG =~ /^((([0-9]+)\.([0-9]+)\.([0-9]+)(?:-([0-9a-zA-Z-]+(?:\.[0-9a-zA-Z-]+)*))?)(?:\+([0-9a-zA-Z-]+(?:\.[0-9a-zA-Z-]+)*))?)$/ #Confirm semantic versioning of tag
   except:
     - branches
-  before_script:
-    - apk add make git
-    - docker login -u $CI_REGISTRY_USER -p $CI_REGISTRY_PASSWORD $CI_REGISTRY
-    - docker login -u $DOCKER_REGISTRY_USERNAME -p $DOCKER_REGISTRY_PASSWORD $DOCKER_REGISTRY_HOST
-  script:
-    - make pull
-    - make push_release
-  retry: 2
-
-# ============================================================================
-# Upload results of BDD tests to Jira (master only)
-# ============================================================================
-
-xray-report:
-  stage: publish
-  only: [master]
-  when: always
-  allow_failure: true
-  retry: 2
-  script:
-    - 'curl -X POST -H "Content-Type: application/json" --fail
-      -H "Authorization: Basic $JIRA_AUTH"
-      --data @cucumber.json
-      https://jira.skatelescope.org/rest/raven/1.0/import/execution/cucumber'
 
 # ============================================================================
 # CI metrics

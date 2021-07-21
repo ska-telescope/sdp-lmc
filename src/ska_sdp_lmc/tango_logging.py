@@ -11,8 +11,8 @@ from contextlib import contextmanager
 
 import tango
 from tango.server import Device
-from ska.logging import configure_logging, get_default_formatter
-from ska.base.base_device import TangoLoggingServiceHandler
+from ska_ser_logging import configure_logging, get_default_formatter
+from ska_tango_base.base.base_device import TangoLoggingServiceHandler
 
 _TANGO_TO_PYTHON = {
     tango.LogLevel.LOG_FATAL: logging.CRITICAL,

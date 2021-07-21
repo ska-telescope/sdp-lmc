@@ -1,10 +1,6 @@
---index-url https://nexus.engageska-portugal.pt/repository/pypi/simple
---extra-index-url https://pypi.org/simple
+--index-url https://artefact.skao.int/repository/pypi-all/simple
 pytango
-jsonschema
-lmcbaseclasses >= 0.8
-ska-sdp-config >= 0.2.1
-ska-logging >= 0.3.0
-ska-log-transactions >= 0.1.0
+ska-sdp-config
+ska-ser-log-transactions
+ska-tango-base
 ska-telescope-model
-bumpver

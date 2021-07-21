@@ -6,7 +6,7 @@ import functools
 from typing import Optional, Callable
 
 from tango.server import command
-from ska.log_transactions import transaction
+from ska_ser_log_transactions import transaction
 
 from .feature_toggle import FeatureToggle
 from .tango_logging import log_transaction_id

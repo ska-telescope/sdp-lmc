@@ -143,7 +143,8 @@ def call_command(subarray_device, command):
             f"Called {command}: wait for changes, "
             f"obs state {ObsState(subarray_device.obsState.value).name}"
         )
-        device_utils.wait_for_changes(subarray_device, ["obsState"])
+        device_utils.wait_for_changes(subarray_device, ["State", "obsState"])
+        #device_utils.wait_for_changes(subarray_device, ["obsState"])
         LOG.info(f"obs state is now {ObsState(subarray_device.obsState.value).name}")
 
     except tango.DevFailed as e:

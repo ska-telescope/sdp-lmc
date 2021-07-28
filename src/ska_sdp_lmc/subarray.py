@@ -110,8 +110,8 @@ class SDPSubarray(SDPDevice):
         self._set_admin_mode(AdminMode.ONLINE)
         self._set_health_state(HealthState.OK)
 
-        # Get connection to the config DB
-        self._config = SubarrayConfig(self._get_subarray_id())
+        # Initialise config db connection.
+        self._init_config(SubarrayConfig, self._get_subarray_id())
 
         # Create device state if it does not exist
         for txn in self._config.txn():
@@ -554,9 +554,14 @@ class SDPSubarray(SDPDevice):
 
         """
         subarray = self._config.subarray(txn)
+        state = subarray.state
+        if state is None:
+            # This can happen in the event loop before it's been properly restarted.
+            LOG.info("No state, don't set attributes from config")
+            return
 
         with log_transaction_id(subarray.transaction_id):
-            self._set_state(subarray.state)
+            self._set_state(state)
             self._set_receive_addresses(subarray.receive_addresses)
             self._set_scan_type(subarray.scan_type if subarray.scan_type else "null")
             self._set_scan_id(subarray.scan_id if subarray.scan_id else 0)

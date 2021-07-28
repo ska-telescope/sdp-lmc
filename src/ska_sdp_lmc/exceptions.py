@@ -13,6 +13,7 @@ def raise_exception(reason, desc, origin, severity=ErrSeverity.ERR):
     :param reason: Reason for the error.
     :param desc: Error description.
     :param origin: Error origin.
+    :param severity Error severity
 
     """
     LOG.error("Raising DevFailed exception...")

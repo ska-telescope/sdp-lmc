@@ -9,9 +9,13 @@ from ska_sdp_lmc import tango_logging, base
 
 LOG_LIST = test_logging.ListHandler()
 LOG = tango_logging.get_logger()
+SLEEP = 0.05
+TIMEOUT = 5.0
 
 
-def wait_for(predicate: Callable, timeout: float = 5.0, sleep: float = 0.1) -> None:
+def wait_for(
+    predicate: Callable, timeout: float = TIMEOUT, sleep: float = SLEEP
+) -> None:
     """Wait for predicate to be true."""
     elapsed = 0.0
     while not predicate() and elapsed < timeout:
@@ -93,13 +97,13 @@ class Monitor:
         return changed
 
     def wait_for(
-        self, predicate: Callable, timeout: float = 5.0, sleep: float = 0.1
+        self, predicate: Callable, timeout: float = TIMEOUT, sleep: float = SLEEP
     ) -> str:
         wait_for(predicate, timeout, sleep)
         return self.value
 
     def wait_for_value(
-        self, value: str, timeout: float = 5.0, sleep: float = 0.1
+        self, value: str, timeout: float = TIMEOUT, sleep: float = SLEEP
     ) -> str:
         def predicate():
             LOG.debug("Test if %s is %s", self.value, value)
@@ -109,7 +113,7 @@ class Monitor:
         self._check_for_change()
         return value
 
-    def wait_for_change(self, timeout: float = 5.0, sleep: float = 0.1) -> str:
+    def wait_for_change(self, timeout: float = TIMEOUT, sleep: float = SLEEP) -> str:
         return self.wait_for(self._check_for_change, timeout, sleep)
 
     def close(self):
@@ -185,6 +189,6 @@ def init_device(devices, name: str, wipe_config_db: Callable):
     device.Init()
 
     # Update the device attributes
-    device.update_attributes()
+    feature_check(device)
 
     return device

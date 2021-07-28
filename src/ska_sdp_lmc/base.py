@@ -4,7 +4,7 @@ import enum
 import threading
 from typing import Callable
 
-from tango import AttrWriteType, EnsureOmniThread, AutoTangoMonitor
+from tango import AttrWriteType, EnsureOmniThread
 from tango.server import Device, command, attribute
 
 from ska_sdp_config.config import Transaction
@@ -12,30 +12,10 @@ from . import release
 from .feature_toggle import FeatureToggle
 from .exceptions import raise_command_not_allowed
 from .tango_logging import get_logger
+from .util import LOCK
 
 LOG = get_logger()
 FEATURE_EVENT_LOOP = FeatureToggle("event_loop", True)
-
-
-class TangoLock(AutoTangoMonitor):
-    lock = threading.Lock()
-
-    def __init__(self, device):
-        pass
-        # super().__init__(device)
-
-    def __enter__(self):
-        # pass
-        LOG.info("Acquiring lock")
-        TangoLock.lock.acquire()
-        # super().__enter__()
-        LOG.info("Acquired lock")
-
-    def __exit__(self, exc_type, exc_val, exc_tb):
-        # pass
-        # super().__exit__(exc_type, exc_val, exc_tb)
-        TangoLock.lock.release()
-        LOG.info("Released lock")
 
 
 class SDPDevice(Device):
@@ -161,11 +141,14 @@ class SDPDevice(Device):
         # Use EnsureOmniThread to make it thread-safe under Tango
         with EnsureOmniThread():
             for watcher in self._config.watcher():
-                LOG.info('watcher %s wake-up, deleting %s',
-                         type(watcher).__name__, self._deleting)
+                LOG.info(
+                    "watcher %s wake-up, deleting %s",
+                    type(watcher).__name__,
+                    self._deleting,
+                )
                 if self._deleting:
                     break
-                with TangoLock(self):
+                with LOCK:
                     self._watcher = watcher
                     for txn in watcher.txn():
                         LOG.info("set attributes from config")
@@ -175,7 +158,7 @@ class SDPDevice(Device):
 
     def _stop_event_loop(self):
         """Stop running the event loop."""
-        with TangoLock(self):
+        with LOCK:
             self._deleting = True
             if self._watcher is not None:
                 LOG.info("Trigger watcher loop")

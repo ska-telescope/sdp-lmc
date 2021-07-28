@@ -18,7 +18,14 @@ from pytest_bdd import given, parsers, scenarios, then, when
 import ska_sdp_config
 
 from . import device_utils
-from ska_sdp_lmc import AdminMode, HealthState, ObsState, base_config, tango_logging
+from ska_sdp_lmc import (
+    AdminMode,
+    HealthState,
+    ObsState,
+    util,
+    base_config,
+    tango_logging,
+)
 
 CONFIG_DB_CLIENT = base_config.new_config_db_client()
 SUBARRAY_ID = "01"
@@ -66,7 +73,8 @@ def set_subarray_device_state(subarray_device, state: str):
 
     """
     # Set the device state in the config DB
-    set_state_and_obs_state(state, "EMPTY")
+    with util.LOCK:
+        set_state_and_obs_state(state, "EMPTY")
 
     # Wait for the device state to update.
     LOG.info("Set state: wait for updates")
@@ -97,8 +105,8 @@ def set_subarray_device_obstate(subarray_device, initial_obs_state: str):
     LOG.info("Set obsState: wait for updates")
     device_utils.wait_for_values(
         subarray_device,
-        ["State", "obsState"],
-        [state, str(ObsState[initial_obs_state].value)],
+        ["obsState"],
+        [str(ObsState[initial_obs_state].value)],
     )
 
     # Check obsState has been set correctly
@@ -144,7 +152,7 @@ def call_command(subarray_device, command):
             f"obs state {ObsState(subarray_device.obsState.value).name}"
         )
         device_utils.wait_for_changes(subarray_device, ["State", "obsState"])
-        #device_utils.wait_for_changes(subarray_device, ["obsState"])
+        # device_utils.wait_for_changes(subarray_device, ["obsState"])
         LOG.info(f"obs state is now {ObsState(subarray_device.obsState.value).name}")
 
     except tango.DevFailed as e:
@@ -206,14 +214,15 @@ def call_command_with_invalid_json(subarray_device, command):
 def receive_addresses_written(subarray_device):
     receive_addresses = read_receive_addresses()
 
-    for txn in CONFIG_DB_CLIENT.txn():
-        pb_list = txn.list_processing_blocks()
-        for pb_id in pb_list:
-            pb = txn.get_processing_block(pb_id)
-            if pb.workflow["id"] in RECEIVE_WORKFLOWS:
-                pb_state = txn.get_processing_block_state(pb_id)
-                pb_state["receive_addresses"] = receive_addresses
-                txn.update_processing_block_state(pb_id, pb_state)
+    with util.LOCK:
+        for txn in CONFIG_DB_CLIENT.txn():
+            pb_list = txn.list_processing_blocks()
+            for pb_id in pb_list:
+                pb = txn.get_processing_block(pb_id)
+                if pb.workflow["id"] in RECEIVE_WORKFLOWS:
+                    pb_state = txn.get_processing_block_state(pb_id)
+                    pb_state["receive_addresses"] = receive_addresses
+                    txn.update_processing_block_state(pb_id, pb_state)
 
     LOG.info("Receive addresses: wait for transition to idle")
     device_utils.wait_for_values(

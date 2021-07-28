@@ -97,7 +97,7 @@ Feature: SDP Subarray Device
 		| RESTARTING        |
 
 
-	#Commands succeed in obsStates where they are allowed and transition to the correct final obsState.
+	#Commands succeed in obsStates where they are allowed and transition to the correct final obsState.
 	@XTP-971 @XTP-118 @Current
 	Scenario Outline: Command succeeds in allowed obsState
 		Given I have an SDPSubarray device

@@ -11,7 +11,7 @@ from ska_sdp_config.config import Transaction
 # Note that relative imports are incompatible with main.
 from ska_sdp_lmc.tango_logging import get_logger, init_logger, log_transaction_id
 from ska_sdp_lmc.attributes import HealthState
-from ska_sdp_lmc.base import SDPDevice, TangoLock
+from ska_sdp_lmc.base import SDPDevice
 from ska_sdp_lmc.commands import command_transaction
 from ska_sdp_lmc.master_config import MasterConfig
 from ska_sdp_lmc.util import terminate, check_args

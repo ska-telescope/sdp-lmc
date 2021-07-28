@@ -4,9 +4,15 @@ import inspect
 import logging
 import pathlib
 import sys
+import threading
 from typing import List, Type, Optional
 
 LOG = logging.getLogger("ska_sdp_lmc")
+
+# Have tried using AutoTangoMonitor, but it only works with a device server
+# and the tests also need to acquire a thread lock to stop interference
+# from the event thread. Use a simple global lock instead.
+LOCK = threading.Lock()
 
 
 # This is to find the stack info of the caller, not the one in this module.

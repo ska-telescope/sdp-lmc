@@ -7,9 +7,9 @@ from typing import Optional, Callable
 from tango.server import command
 from ska.log_transactions import transaction
 
-from .base import TangoLock
 from .feature_toggle import FeatureToggle
 from .tango_logging import log_transaction_id, get_logger
+from .util import LOCK
 
 LOG = get_logger()
 FEATURE_ALL_COMMANDS_HAVE_ARGUMENT = FeatureToggle("all_commands_have_argument", False)
@@ -34,7 +34,7 @@ def command_transaction(argdesc: Optional[str] = None):
 
         @functools.wraps(command_method)
         def wrapper(self, params_json="{}"):
-            with TangoLock(self):
+            with LOCK:
                 name = command_method.__name__
                 LOG.debug("command %s device %s", name, type(self).__name__)
                 params = json.loads(params_json)

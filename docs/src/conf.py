@@ -19,9 +19,11 @@
 #
 
 autodoc_mock_imports = [
-    "jsonschema",
-    "ska",
     "ska_sdp_config",
+    "ska_ser_logging",
+    "ska_ser_log_transactions",
+    "ska_tango_base",
+    "ska_telmodel",
     "tango",
 ]
 
@@ -50,9 +52,9 @@ author = "SKA SDP Developers"
 # built documents.
 #
 # The short X.Y.Z version.
-version = "0.16.1"
+version = "0.17.2"
 # The full version, including alpha/beta/rc pre-release tags.
-release = "0.16.1"
+release = "0.17.2"
 
 # -- General configuration ------------------------------------------------
 
@@ -73,7 +75,6 @@ extensions = [
     "sphinx.ext.ifconfig",
     "sphinx.ext.viewcode",
     "sphinx.ext.githubpages",
-    "m2r2",
 ]
 
 # Add any paths that contain templates here, relative to this directory.

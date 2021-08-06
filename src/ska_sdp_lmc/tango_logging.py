@@ -11,8 +11,8 @@ from contextlib import contextmanager
 
 import tango
 from tango.server import Device
-from ska.logging import configure_logging, get_default_formatter
-from ska.base.base_device import TangoLoggingServiceHandler
+from ska_ser_logging import configure_logging, get_default_formatter
+from ska_tango_base.base.base_device import TangoLoggingServiceHandler
 
 from ska_sdp_lmc.util import is_test_env
 from ska_sdp_lmc.feature_toggle import FeatureToggle
@@ -200,8 +200,7 @@ def configure(
     # device_class.get_logger = lambda self: get_logger()
 
     # Now initialise the logging.
-    python_level = to_python_level(level)
-    configure_logging(python_level, tags_filter=TangoFilter)
+    configure_logging(level=to_python_level(level), tags_filter=TangoFilter)
     log = get_logger()
     for handler in log.handlers:
         log.removeHandler(handler)

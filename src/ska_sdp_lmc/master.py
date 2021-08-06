@@ -172,7 +172,7 @@ class SDPMaster(SDPDevice):
         """
         Set attributes from configuration.
 
-        This is called from the event loop.
+        This is called by the event loop.
 
         :param txn: configuration transaction
 

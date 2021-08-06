@@ -62,11 +62,14 @@ class SDPSubarray(SDPDevice):
         label="Receive addresses",
         dtype=str,
         access=AttrWriteType.READ,
-        doc="Host addresses for the visibility receive workflow as a " "JSON string.",
+        doc="Host addresses for the visibility receive workflow as a JSON string.",
     )
 
     scanType = attribute(
-        label="Scan type", dtype=str, access=AttrWriteType.READ, doc="Scan type."
+        label="Scan type",
+        dtype=str,
+        access=AttrWriteType.READ,
+        doc="Scan type.",
     )
 
     scanID = attribute(
@@ -261,6 +264,7 @@ class SDPSubarray(SDPDevice):
         :param config: JSON string containing resource configuration
 
         """
+
         # Validate and parse the configuration
         sbi, pbs = validate_assign_resources(config)
 
@@ -546,9 +550,9 @@ class SDPSubarray(SDPDevice):
 
     def _set_attr_from_config(self, txn: Transaction) -> None:
         """
-        Set attributes based on configuration.
+        Set attributes from configuration.
 
-        This is called from the event loop.
+        This is called by the event loop.
 
         :param txn: configuration transaction
 

@@ -10,6 +10,8 @@ MSG = "Running tango test"
 
 
 class ListHandler(logging.Handler):
+    """A class for list handler."""
+
     def __init__(self):
         super().__init__()
         self.list = []
@@ -51,6 +53,8 @@ class ListHandler(logging.Handler):
 
 
 class FakeDevice:
+    """Class for Fake Device."""
+
     def info_stream(self, _: str, *args) -> None:
         print("info stream should not be called")
 

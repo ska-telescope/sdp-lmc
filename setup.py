@@ -27,11 +27,10 @@ setuptools.setup(
     package_data={"ska_sdp_lmc": ["schema/*.json"]},
     install_requires=[
         "pytango",
-        "jsonschema",
-        "lmcbaseclasses>=0.8",
-        "ska-sdp-config>=0.2.1",
-        "ska-logging>=0.3.0",
-        "ska-telescope-model==1.1",
+        "ska-sdp-config",
+        "ska-ser-log-transactions",
+        "ska-tango-base",
+        "ska-telescope-model",
     ],
     entry_points={
         "console_scripts": [
@@ -41,15 +40,9 @@ setuptools.setup(
     },
     setup_requires=["pytest-runner"],
     tests_require=[
-        "pylint2junit",
         "pytest",
         "pytest-bdd",
         "pytest-cov",
-        "pytest-pylint",
-        "ska-telescope-model",
-    ],
-    dependency_links=[
-        "https://nexus.engageska-portugal.pt/repository/pypi/simple/",
     ],
     zip_safe=False,
     python_requires=">=3.7",

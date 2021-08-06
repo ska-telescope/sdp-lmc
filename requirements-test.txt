@@ -1,6 +1,7 @@
+black
+pylint
 pylint2junit
 pytest
 pytest-bdd
 pytest-cov
-pytest-pylint
 pytest-runner

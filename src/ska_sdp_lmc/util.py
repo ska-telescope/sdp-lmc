@@ -44,7 +44,7 @@ class _CallerFilter(logging.Filter):
 LOG.addFilter(
     _CallerFilter(
         ignore=lambda f: f.filename == __file__,
-        match=lambda f: any([text in f.filename for text in ("lmc", "tests")]),
+        match=lambda f: any(text in f.filename for text in ("lmc", "tests")),
     )
 )
 

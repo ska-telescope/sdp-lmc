@@ -31,7 +31,7 @@ CONFIG_DB_CLIENT = base_config.new_config_db_client()
 SUBARRAY_ID = "01"
 RECEIVE_WORKFLOWS = ["test_receive_addresses"]
 DEVICE_NAME = "test_sdp/elt/subarray_1"
-SCHEMA_VERSION = "0.2"
+SCHEMA_VERSION = "0.3"
 LOG = tango_logging.get_logger()
 
 # -----------------------------------------------------------------------------
@@ -130,23 +130,25 @@ def call_command(subarray_device, command):
     # Check command is present
     command_list = subarray_device.get_command_list()
     assert command in command_list
+
     # Get information about the command
     command_config = subarray_device.get_command_config(command)
 
+    # Get the command argument
+    if command_config.in_type == tango.DevVoid:
+        config_str = None
+    elif command_config.in_type == tango.DevString:
+        config_str = read_command_argument(command)
+    else:
+        message = "Cannot handle command with argument type {}"
+        raise ValueError(message.format(command_config.in_type))
+
     try:
         # Call the command
-        if command_config.in_type == tango.DevVoid:
-            config_str = None
-        elif command_config.in_type == tango.DevString:
-            config_str = read_command_argument(command)
-        else:
-            message = "Cannot handle command with argument type {}"
-            raise ValueError(message.format(command_config.in_type))
-
         subarray_device.command_inout(command, cmd_param=config_str)
         subarray_device.exception = None
 
-        # Wait for the device state to update.
+        # Wait for the device state to update
         LOG.info(
             f"Called {command}: wait for changes, "
             f"obs state {ObsState(subarray_device.obsState.value).name}"
@@ -171,15 +173,45 @@ def call_command_without_interface(subarray_device, command):
     command_list = subarray_device.get_command_list()
     assert command in command_list
 
-    # Call the command after deleting the interface value in the configuration
-    config = read_command_argument(command, decode=True)
+    # Get previous version of the command argument and delete the interface
+    # value
+    config = read_command_argument(command, previous=True, decode=True)
     del config["interface"]
 
     try:
+        # Call the command
         subarray_device.command_inout(command, cmd_param=json.dumps(config))
         subarray_device.exception = None
 
-        # Wait for the device state to update.
+        # Wait for the device state to update
+        LOG.info("Called command without value: wait for changes")
+        device_utils.wait_for_changes(subarray_device, ["obsState"])
+
+    except tango.DevFailed as e:
+        subarray_device.exception = e
+
+
+@when("I call <command> with previous JSON configuration")
+def call_command_with_previous_config(subarray_device, command):
+    """Call an SDPSubarray command without an interface value.
+
+    :param subarray_device: an SDPSubarray device
+    :param command: the name of the command
+
+    """
+    # Check command is present
+    command_list = subarray_device.get_command_list()
+    assert command in command_list
+
+    # Get previous version of the command argument
+    config_str = read_command_argument(command, previous=True)
+
+    try:
+        # Call the command
+        subarray_device.command_inout(command, cmd_param=config_str)
+        subarray_device.exception = None
+
+        # Wait for the device state to update
         LOG.info("Called command without value: wait for changes")
         device_utils.wait_for_changes(subarray_device, ["obsState"])
 
@@ -486,11 +518,15 @@ def get_sbi_pbs():
     """Get SBI and PBs from AssignResources argument."""
     config = read_command_argument("AssignResources", decode=True)
 
-    sbi_id = config.get("id")
+    # Checking if configuration string is the new version
+    eb_id = config.get("eb_id")
+    scan_types = config.get("scan_types")
+    for scan_type in scan_types:
+        scan_type["id"] = scan_type.pop("scan_type_id")
     sbi = {
-        "id": sbi_id,
+        "id": eb_id,
         "subarray_id": SUBARRAY_ID,
-        "scan_types": config.get("scan_types"),
+        "scan_types": scan_types,
         "pb_realtime": [],
         "pb_batch": [],
         "pb_receive_addresses": None,
@@ -501,17 +537,22 @@ def get_sbi_pbs():
 
     pbs = []
     for pbc in config.get("processing_blocks"):
-        pb_id = pbc.get("id")
-        wf_type = pbc.get("workflow").get("type")
+        pb_id = pbc.get("pb_id")
+        wf_type = pbc.get("workflow").get("kind")
         sbi["pb_" + wf_type].append(pb_id)
         if "dependencies" in pbc:
             dependencies = pbc.get("dependencies")
         else:
             dependencies = []
+
+        # Temporary - config DB currently doesn't support new schema
+        w = pbc.get("workflow")
+        w["type"] = w.pop("kind")
+        w["id"] = w.pop("name")
         pb = ska_sdp_config.ProcessingBlock(
             pb_id,
-            sbi_id,
-            pbc.get("workflow"),
+            eb_id,
+            w,
             parameters=pbc.get("parameters"),
             dependencies=dependencies,
         )
@@ -530,11 +571,11 @@ def get_scan_type():
 def get_scan_id():
     """Get scan ID from Scan argument."""
     config = read_command_argument("Scan", decode=True)
-    scan_id = config.get("id")
+    scan_id = config.get("scan_id")
     return scan_id
 
 
-def read_command_argument(name, invalid=False, decode=False):
+def read_command_argument(name, invalid=False, decode=False, previous=False):
     """Read command argument from JSON file.
 
     :param name: name of command
@@ -544,6 +585,8 @@ def read_command_argument(name, invalid=False, decode=False):
     """
     if invalid:
         fmt = "command_{}_invalid.json"
+    elif previous:
+        fmt = "command_{}_previous.json"
     else:
         fmt = "command_{}.json"
     return read_json_data(fmt.format(name), decode=decode)

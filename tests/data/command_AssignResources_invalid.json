@@ -1,15 +1,15 @@
 {
-  "interface": "https://schema.skatelescope.org/ska-sdp-assignres/0.2",
+  "interface": "https://schema.skao.int/ska-sdp-assignres/0.3",
   "max_length": 21600.0,
   "scan_types": [
     {
-      "id": "science",
+      "scan_type_id": "science",
       "channels": [
         {"count": 372, "start": 0, "stride": 2, "freq_min": 0.35e9, "freq_max": 0.358e9, "link_map": [[0,0], [200,1]]}
       ]
     },
     {
-      "id": "calibration",
+      "scan_type_id": "calibration",
       "channels": [
         {"count": 372, "start": 0, "stride": 2, "freq_min": 0.35e9, "freq_max": 0.358e9, "link_map": [[0,0], [200,1]]}
       ]

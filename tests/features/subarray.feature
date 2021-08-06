@@ -246,8 +246,24 @@ Feature: SDP Subarray Device
 		| Scan            | READY             |
 
 
-	#Commands that take a JSON configuration string are accepted without an interface value
-	Scenario Outline: Command is accepted without an interface value in JSON configuration
+
+	#Commands accept version 0.2 of JSON strings
+	Scenario Outline: Command is accepted with previous schema version
+		Given I have an SDPSubarray device
+		And obsState is <initial_obs_state>
+		When I call <command> with previous JSON configuration
+		Then obsState should be <final_obs_state>
+
+		Examples:
+		| command          | initial_obs_state | final_obs_state |
+		| AssignResources  | EMPTY             | RESOURCING      |
+		| Configure        | IDLE              | READY           |
+		| Scan             | READY             | SCANNING        |
+
+
+
+	#Commands accept version 0.2 of JSON strings without interface value
+	Scenario Outline: Command is accepted with previous schema version without interface value
 		Given I have an SDPSubarray device
 		And obsState is <initial_obs_state>
 		When I call <command> without an interface value in the JSON configuration
@@ -257,7 +273,7 @@ Feature: SDP Subarray Device
 		| command         | initial_obs_state | final_obs_state |
 		| AssignResources | EMPTY             | RESOURCING      |
 		| Configure       | IDLE              | READY           |
-		| Configure       | READY             | READY           |
+		| Scan            | READY             | SCANNING        |
 
 
 	@XTP-122 @XTP-118 @Current

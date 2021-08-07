@@ -17,7 +17,7 @@ from ska_tango_base.base.base_device import TangoLoggingServiceHandler
 from ska_sdp_lmc.util import is_test_env
 from ska_sdp_lmc.feature_toggle import FeatureToggle
 
-FEATURE_TANGO_LOGGER = FeatureToggle("tango_logger", True)
+FEATURE_TANGO_LOGGER = FeatureToggle("tango_logger", False)
 _TANGO_TO_PYTHON = {
     tango.LogLevel.LOG_FATAL: logging.CRITICAL,
     tango.LogLevel.LOG_ERROR: logging.ERROR,

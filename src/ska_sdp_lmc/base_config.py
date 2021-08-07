@@ -41,3 +41,7 @@ class BaseConfig:
 
         """
         return self._client.watcher()
+
+    def close(self):
+        """Close connection to configuration."""
+        self._client.close()

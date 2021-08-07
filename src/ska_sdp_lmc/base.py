@@ -4,7 +4,7 @@ import enum
 import threading
 from typing import Callable
 
-from tango import AttrWriteType, EnsureOmniThread
+from tango import AttrWriteType, AutoTangoMonitor, EnsureOmniThread
 from tango.server import Device, command, attribute
 
 from ska_sdp_config.config import Transaction
@@ -12,7 +12,6 @@ from . import release
 from .feature_toggle import FeatureToggle
 from .exceptions import raise_command_not_allowed
 from .tango_logging import get_logger
-from .util import LOCK
 
 LOG = get_logger()
 FEATURE_EVENT_LOOP = FeatureToggle("event_loop", True)
@@ -47,15 +46,9 @@ class SDPDevice(Device):
 
         # Initialise private values of attributes
         self._version = release.VERSION
-        self._event_thread = None
-        self._deleting = False
 
     def delete_device(self):
-        """Device destructor."""
-        LOG.info(
-            "Deleting %s device: %s", self._get_device_name().lower(), self.get_name()
-        )
-        self._stop_event_loop()
+        """Delete the device."""
 
     def always_executed_hook(self):
         """Run for on each call."""
@@ -74,10 +67,9 @@ class SDPDevice(Device):
 
     def _set_state(self, value):
         """Set device state."""
-        state = self.get_state()
-        LOG.info("Called set_state state %s -> %s", state, value.name)
-        if state != value:
-            LOG.info("Setting device state %s -> %s", state, value.name)
+        LOG.debug("Called _set_state %s -> %s", self.get_state().name, value.name)
+        if self.get_state() != value:
+            LOG.info("Setting device state to %s", value.name)
             self.set_state(value)
             self.push_change_event("State", self.get_state())
 
@@ -86,94 +78,98 @@ class SDPDevice(Device):
         # This gets the class name minus SDP e.g. Master
         return cls.__name__.split("SDP")[1]
 
-    # These are because of Tango strangeness with __init__.
-    # Can't set to None in init_device as gets called multiple times.
-    def _has_thread(self):
-        return hasattr(self, "_event_thread") and self._event_thread is not None
-
-    def _has_config(self):
-        return hasattr(self, "_config")
-
-    def _init_config(self, config_class: Callable, *args):
-        if not self._has_config():
-            LOG.info("%s: set connection to configuration db", self._get_device_name())
-            self._config = config_class(*args)
-            self._watcher = None
-
     # ------------------
     # Event loop methods
     # ------------------
 
     def _start_event_loop(self):
         """Start event loop."""
-
         if FEATURE_EVENT_LOOP.is_active():
-            # Only start the event loop from the main thread. This stops it starting
-            # when the tango device test context is created.
-            if (
-                not self._has_thread()
-                and threading.current_thread() != threading.main_thread()
-            ):
-                LOG.info("Not main thread, won't start event loop")
-                return
-
-            # The event loop should only be started once.
-            if self._has_thread():
-                LOG.info("Event loop already started")
-                return
-
             # Start event loop in thread
-            thread = threading.Thread(
+            self._el_thread = threading.Thread(
                 target=self._event_loop, name="EventLoop", daemon=True
             )
-            thread.start()
+            self._el_watcher = None
+            self._el_exit = False
+            self._el_thread.start()
         else:
             # Add command to manually update attributes
-            thread = None
+            self._el_thread = None
+            self._el_watcher = None
+            self._el_exit = False
             cmd = command(f=self.update_attributes)
             self.add_command(cmd, True)
 
-        self._event_thread = thread
+    def _stop_event_loop(self):
+        """Stop event loop."""
+        self._el_exit = True
+        if self._el_watcher is not None:
+            LOG.debug("Trigger watcher loop")
+            self._el_watcher.trigger()
+        if self._el_thread is not None:
+            self._el_thread.join()
+            self._el_thread = None
 
     def _event_loop(self):
-        """Event loop to update attributes automatically."""
-        LOG.info("Starting event loop")
+        """Event loop to update attributes."""
         # Use EnsureOmniThread to make it thread-safe under Tango
         with EnsureOmniThread():
+            LOG.info("Starting event loop")
             for watcher in self._config.watcher():
-                LOG.info(
-                    "watcher %s wake-up, deleting %s",
-                    type(watcher).__name__,
-                    self._deleting,
-                )
-                if self._deleting:
+                # Expose watcher as an attribute so loop can be triggered
+                # by another thread
+                self._el_watcher = watcher
+                LOG.debug("Watcher wake-up, exit %s", self._el_exit)
+                if self._el_exit:
                     break
-                with LOCK:
-                    self._watcher = watcher
+                # Use the Tango monitor lock to prevent attributes being
+                # updated by this thread when a command is running
+                with AutoTangoMonitor(self):
                     for txn in watcher.txn():
-                        LOG.info("set attributes from config")
+                        LOG.debug("Starting set attributes from config")
                         self._set_attr_from_config(txn)
-                        LOG.info("done set attributes from config")
-        LOG.info("Exiting event loop")
-
-    def _stop_event_loop(self):
-        """Stop running the event loop."""
-        with LOCK:
-            self._deleting = True
-            if self._watcher is not None:
-                LOG.info("Trigger watcher loop")
-                self._watcher.trigger()
-                self._watcher = None
-
-        if self._event_thread is not None:
-            self._event_thread.join()
-            self._event_thread = None
+                        LOG.debug("Finished set attributes from config")
+            self._el_watcher = None
+            LOG.info("Exiting event loop")
 
     def update_attributes(self):
-        """Update the device attributes manually."""
+        """
+        Update the device attributes manually.
+
+        This method is used during synchronous testing (when the event loop is
+        not enabled).
+
+        """
         LOG.info("Updating attributes")
         for txn in self._config.txn():
             self._set_attr_from_config(txn)
+
+    def _update_attr_until_condition(self, condition: Callable):
+        """
+        Update attributes until condition is satisfied.
+
+        This generic method is used by other methods to wait for specific
+        conditions.
+
+        :param condition: condition to exit update loop
+
+        """
+        for watcher in self._config.watcher():
+            for txn in watcher.txn():
+                self._set_attr_from_config(txn)
+            if condition():
+                break
+
+    def _update_attr_until_state(self, values):
+        """
+        Update attributes until device state reaches one of the values.
+
+        This is used as a substitute event loop inside a command.
+
+        :param values: list of state values
+
+        """
+        self._update_attr_until_condition(lambda: self.get_state() in values)
 
     def _set_attr_from_config(self, txn: Transaction) -> None:
         """
@@ -185,6 +181,7 @@ class SDPDevice(Device):
         :param txn: configuration transaction
 
         """
+        raise NotImplementedError
 
     # -----------------------
     # Command allowed methods

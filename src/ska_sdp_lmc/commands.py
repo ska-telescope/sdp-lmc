@@ -9,7 +9,6 @@ from ska_ser_log_transactions import transaction
 
 from .feature_toggle import FeatureToggle
 from .tango_logging import log_transaction_id, get_logger
-from .util import LOCK
 
 LOG = get_logger()
 FEATURE_ALL_COMMANDS_HAVE_ARGUMENT = FeatureToggle("all_commands_have_argument", False)
@@ -34,18 +33,17 @@ def command_transaction(argdesc: Optional[str] = None):
 
         @functools.wraps(command_method)
         def wrapper(self, params_json="{}"):
-            with LOCK:
-                name = command_method.__name__
-                LOG.debug("command %s device %s", name, type(self).__name__)
-                params = json.loads(params_json)
+            name = command_method.__name__
+            LOG.debug("command %s device %s", name, type(self).__name__)
+            params = json.loads(params_json)
 
-                with transaction(name, params, logger=LOG) as txn_id:
-                    with log_transaction_id(txn_id):
-                        LOG.info("Execute command %s", name)
-                        if argdesc:
-                            ret = command_method(self, txn_id, params_json)
-                        else:
-                            ret = command_method(self, txn_id)
+            with transaction(name, params, logger=LOG) as txn_id:
+                with log_transaction_id(txn_id):
+                    LOG.debug("Execute command %s", name)
+                    if argdesc:
+                        ret = command_method(self, txn_id, params_json)
+                    else:
+                        ret = command_method(self, txn_id)
             return ret
 
         # Use the Tango command function to create the command.

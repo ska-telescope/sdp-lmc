@@ -4,11 +4,12 @@ import tango
 
 from pytest_bdd import given, parsers, scenarios, then, when
 
-from ska_sdp_lmc import HealthState, base_config
+from ska_sdp_lmc import HealthState, base_config, tango_logging
 from .device_utils import init_device, update_attributes, wait_for_state, LOG_LIST
 
 DEVICE_NAME = "test_sdp/elt/master"
 CONFIG_DB_CLIENT = base_config.new_config_db_client()
+LOG = tango_logging.get_logger()
 
 # -------------------------------
 # Get scenarios from feature file
@@ -60,6 +61,20 @@ def set_device_state(master_device, initial_state):
 # ----------
 
 
+@when("the device is initialised")
+def initialise_device(master_device):
+    """Initialise the device."""
+
+    # Wipe the config DB
+    wipe_config_db()
+
+    # Call the Init command to reinitialise the device
+    master_device.Init()
+
+    # Update the attributes if the event loop is not running
+    update_attributes(master_device)
+
+
 @when("I call <command>")
 def call_command(master_device, command):
     """
@@ -94,6 +109,22 @@ def device_state_is(master_device, final_state):
     :param final_state: expected state value
 
     """
+    assert master_device.state() == tango.DevState.names[final_state]
+
+
+@then(parsers.parse("the state should become {final_state:S}"))
+@then("the state should become <final_state>")
+def device_state_becomes(master_device, final_state):
+    """
+    Check the the device state becomes the expected value.
+
+    :param master_device: SDPMaster device
+    :param final_state: expected state value
+
+    """
+    LOG.debug("Waiting for device state %s", final_state)
+    wait_for_state(master_device, tango.DevState.names[final_state])
+    LOG.debug("Reached device state %s", master_device.state())
     assert master_device.state() == tango.DevState.names[final_state]
 
 
@@ -137,6 +168,11 @@ def log_contains_transaction_id():
 # -----------------------------------------------------------------------------
 # Ancillary functions
 # -----------------------------------------------------------------------------
+
+
+def wipe_config_db():
+    """Remove the master entry in the config DB."""
+    CONFIG_DB_CLIENT._backend.delete("/master", recursive=True, must_exist=False)
 
 
 def set_state(state):

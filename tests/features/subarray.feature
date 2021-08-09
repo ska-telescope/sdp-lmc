@@ -10,8 +10,9 @@ Feature: SDP Subarray Device
 	@XTP-119 @XTP-118 @Current
 	Scenario: Device is initialised in the correct state
 		Given I have an SDPSubarray device
-		Then the state should be OFF
-		And obsState should be EMPTY
+		When the device is initialised
+		Then the state should become OFF
+		And obsState should become EMPTY
 		And adminMode should be ONLINE
 		And healthState should be OK
 		And the log should not contain a transaction ID

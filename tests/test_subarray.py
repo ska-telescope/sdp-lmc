@@ -12,7 +12,13 @@ from ska_telmodel.sdp.version import SDP_RECVADDRS_PREFIX
 import ska_sdp_config
 
 from ska_sdp_lmc import AdminMode, HealthState, ObsState, base_config, tango_logging
-from .device_utils import init_device, update_attributes, wait_for, LOG_LIST
+from .device_utils import (
+    init_device,
+    update_attributes,
+    wait_for,
+    wait_for_state,
+    LOG_LIST,
+)
 
 DEVICE_NAME = "test_sdp/elt/subarray_1"
 SUBARRAY_ID = "01"
@@ -105,6 +111,20 @@ def set_obs_state(subarray_device, initial_obs_state: str):
 # -----------------------------------------------------------------------------
 # When steps: describe an event or action
 # -----------------------------------------------------------------------------
+
+
+@when("the device is initialised")
+def initialise_device(subarray_device):
+    """Initialise the device."""
+
+    # Wipe the config DB
+    wipe_config_db()
+
+    # Call the Init command to reinitialise the device
+    subarray_device.Init()
+
+    # Update the attributes if the event loop is not running
+    update_attributes(subarray_device)
 
 
 @when(parsers.parse("I call {command:S}"))
@@ -246,6 +266,21 @@ def device_state_is(subarray_device, expected):
     :param expected: the expected device state.
 
     """
+    assert subarray_device.state() == tango.DevState.names[expected]
+
+
+@then(parsers.parse("the state should become {expected:S}"))
+def device_state_becomes(subarray_device, expected):
+    """
+    Check that the device state becomes the value.
+
+    :param subarray_device: an SDPSubarray device.
+    :param expected: the expected device state.
+
+    """
+    LOG.debug("Waiting for device state %s", expected)
+    wait_for_state(subarray_device, tango.DevState.names[expected])
+    LOG.debug("Reached device state %s", subarray_device.state())
     assert subarray_device.state() == tango.DevState.names[expected]
 
 
@@ -433,6 +468,13 @@ def wait_for_obs_state(device, obs_state):
 
     """
     wait_for(lambda: device.obsState == obs_state)
+
+
+def wipe_config_db():
+    """Remove the subarray, SBI and PB entries in the config DB."""
+    CONFIG_DB_CLIENT._backend.delete("/subarray", recursive=True, must_exist=False)
+    CONFIG_DB_CLIENT._backend.delete("/sb", recursive=True, must_exist=False)
+    CONFIG_DB_CLIENT._backend.delete("/pb", recursive=True, must_exist=False)
 
 
 def set_state_and_obs_state(state, obs_state):

@@ -2,7 +2,8 @@ Feature: SDP Master Device
 
     Scenario: Device is initialised in the correct state
         Given I have an SDPMaster device
-        Then the state should be STANDBY
+        When the device is initialised
+        Then the state should become STANDBY
         And healthState should be OK
         And the log should not contain a transaction ID
 

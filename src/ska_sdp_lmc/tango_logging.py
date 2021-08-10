@@ -14,7 +14,6 @@ from tango.server import Device
 from ska_ser_logging import configure_logging, get_default_formatter
 from ska_tango_base.base.base_device import TangoLoggingServiceHandler
 
-from ska_sdp_lmc.util import is_test_env
 from ska_sdp_lmc.feature_toggle import FeatureToggle
 
 FEATURE_TANGO_LOGGER = FeatureToggle("tango_logger", False)
@@ -234,7 +233,7 @@ def init_logger(device: Any) -> None:
     :param device: to configure.
     """
     # The tests configure the logger themselves, don't overwrite it!
-    if is_test_env():
+    if "pytest" in sys.modules:
         return
     log_level = tango.LogLevel.LOG_INFO
     if len(sys.argv) > 2 and "-v" in sys.argv[2]:

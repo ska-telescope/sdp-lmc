@@ -65,7 +65,7 @@ class SubarrayState:
             }
             self._txn.create_subarray(self._id, subarray)
 
-    def _get(self, name: str) -> Any:
+    def _get(self, name: str) -> Optional[Any]:
         """
         Get item from subarray entry.
 
@@ -74,7 +74,7 @@ class SubarrayState:
 
         """
         subarray = self._txn.get_subarray(self._id)
-        return subarray.get(name)
+        return None if subarray is None else subarray.get(name)
 
     def _set(self, name: str, value: Any):
         """
@@ -176,7 +176,6 @@ class SubarrayState:
     @scan_type.setter
     def scan_type(self, value: Optional[str]):
         if self._get("sbi_id") is not None and value is not None:
-
             # Check if scan type is in configuration
             scan_types = self._get_sbi("scan_types")
             st_ids = [st.get("id") for st in scan_types]
@@ -245,7 +244,6 @@ class SubarrayState:
         if new_scan_types is None:
             return
         scan_types = self._get_sbi("scan_types")
-
         # Check for redefinitions.
         st_ids = [st.get("id") for st in scan_types]
         for scan_type in new_scan_types:

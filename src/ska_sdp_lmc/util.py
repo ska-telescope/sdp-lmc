@@ -6,8 +6,9 @@ import pathlib
 import sys
 from typing import List, Type, Optional
 
-LOG = logging.getLogger("ska_sdp_lmc")
+from .tango_logging import get_logger
 
+LOG = get_logger()
 
 # This is to find the stack info of the caller, not the one in this module.
 # For some reason the device subclass is not always in the stack when run from

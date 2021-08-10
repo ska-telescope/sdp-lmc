@@ -49,7 +49,7 @@ class MasterState:
             master = {"transaction_id": None, "state": state.name}
             self._txn.create_master(master)
 
-    def _get(self, name: str) -> Any:
+    def _get(self, name: str) -> Optional[Any]:
         """
         Get item from master entry.
 
@@ -58,7 +58,7 @@ class MasterState:
 
         """
         master = self._txn.get_master()
-        return master.get(name)
+        return None if master is None else master.get(name)
 
     def _set(self, name: str, value: Any):
         """

@@ -43,8 +43,8 @@ class SDPMaster(SDPDevice):
     def init_device(self):
         """Initialise the device."""
         init_logger(self)
-
         LOG.info("SDP Master initialising")
+
         super().init_device()
         self.set_state(DevState.INIT)
 
@@ -57,7 +57,7 @@ class SDPMaster(SDPDevice):
         # Set attributes not updated by event loop
         self._set_health_state(HealthState.OK)
 
-        # Get connection to the config DB
+        # Initialise configuration DB connection
         self._config = MasterConfig()
 
         # Create device state if it does not exist
@@ -69,6 +69,20 @@ class SDPMaster(SDPDevice):
         self._start_event_loop()
 
         LOG.info("SDP Master initialised")
+
+    def delete_device(self):
+        """Delete the device."""
+        LOG.info("SDP Master deleting")
+
+        # Stop event loop
+        self._stop_event_loop()
+
+        # Close configuration DB connection
+        self._config.close()
+
+        super().delete_device()
+
+        LOG.info("SDP Master deleted")
 
     # -----------------
     # Attribute methods
@@ -105,6 +119,8 @@ class SDPMaster(SDPDevice):
             master.transaction_id = transaction_id
             master.state = DevState.ON
 
+        self._update_attr_until_state([DevState.ON])
+
     def is_Disable_allowed(self):
         """Check if the Disable command is allowed."""
         self._command_allowed_state(
@@ -124,6 +140,8 @@ class SDPMaster(SDPDevice):
             master = self._config.master(txn)
             master.transaction_id = transaction_id
             master.state = DevState.DISABLE
+
+        self._update_attr_until_state([DevState.DISABLE])
 
     def is_Standby_allowed(self):
         """Check if the Standby command is allowed."""
@@ -145,6 +163,8 @@ class SDPMaster(SDPDevice):
             master.transaction_id = transaction_id
             master.state = DevState.STANDBY
 
+        self._update_attr_until_state([DevState.STANDBY])
+
     def is_Off_allowed(self):
         """Check if the Off command is allowed."""
         self._command_allowed_state(
@@ -165,6 +185,8 @@ class SDPMaster(SDPDevice):
             master.transaction_id = transaction_id
             master.state = DevState.OFF
 
+        self._update_attr_until_state([DevState.OFF])
+
     # ------------------
     # Event loop methods
     # ------------------
@@ -179,6 +201,11 @@ class SDPMaster(SDPDevice):
 
         """
         master = self._config.master(txn)
+
+        if master.state is None:
+            LOG.info("No state: attributes cannot be set")
+            return
+
         with log_transaction_id(master.transaction_id):
             self._set_state(master.state)
 

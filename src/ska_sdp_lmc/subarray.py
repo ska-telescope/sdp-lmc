@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """Tango SDPSubarray device module."""
 
 import signal
@@ -87,8 +86,8 @@ class SDPSubarray(SDPDevice):
     def init_device(self):
         """Initialise the device."""
         init_logger(self)
-
         LOG.info("SDP Subarray initialising")
+
         super().init_device()
         self.set_state(DevState.INIT)
 
@@ -112,7 +111,7 @@ class SDPSubarray(SDPDevice):
         self._set_admin_mode(AdminMode.ONLINE)
         self._set_health_state(HealthState.OK)
 
-        # Get connection to the config DB
+        # Initialise configuration DB connection
         self._config = SubarrayConfig(self._get_subarray_id())
 
         # Create device state if it does not exist
@@ -124,6 +123,20 @@ class SDPSubarray(SDPDevice):
         self._start_event_loop()
 
         LOG.info("SDP Subarray initialised")
+
+    def delete_device(self):
+        """Delete the device."""
+        LOG.info("SDP Subarray deleting")
+
+        # Stop event loop
+        self._stop_event_loop()
+
+        # Close configuration DB connection
+        self._config.close()
+
+        super().delete_device()
+
+        LOG.info("SDP Subarray deleted")
 
     # -----------------
     # Attribute methods
@@ -211,6 +224,8 @@ class SDPSubarray(SDPDevice):
             subarray.state = DevState.ON
             subarray.obs_state_target = ObsState.EMPTY
 
+        self._update_attr_until_state([DevState.ON])
+
     def is_Off_allowed(self):
         """Check if the Off command is allowed."""
         command_name = "Off"
@@ -245,6 +260,8 @@ class SDPSubarray(SDPDevice):
                 subarray.obs_state_target = ObsState.EMPTY
                 subarray.cancel_sbi()
 
+        self._update_attr_until_state([DevState.OFF])
+
     def is_AssignResources_allowed(self):
         """Check if the AssignResources command is allowed."""
         command_name = "AssignResources"
@@ -274,6 +291,8 @@ class SDPSubarray(SDPDevice):
             subarray.obs_state_target = ObsState.IDLE
             subarray.create_sbi_and_pbs(sbi, pbs)
 
+        self._update_attr_until_obs_state([ObsState.RESOURCING, ObsState.IDLE])
+
     def is_ReleaseResources_allowed(self):
         """Check if the ReleaseResources command is allowed."""
         command_name = "ReleaseResources"
@@ -298,6 +317,8 @@ class SDPSubarray(SDPDevice):
             subarray.transaction_id = transaction_id
             subarray.obs_state_target = ObsState.EMPTY
             subarray.finish_sbi()
+
+        self._update_attr_until_obs_state([ObsState.EMPTY])
 
     def is_Configure_allowed(self):
         """Check if the Configure command is allowed."""
@@ -326,6 +347,8 @@ class SDPSubarray(SDPDevice):
             subarray.add_scan_types(new_scan_types)
             subarray.scan_type = scan_type
 
+        self._update_attr_until_obs_state([ObsState.READY])
+
     def is_Scan_allowed(self):
         """Check if the Scan command is allowed."""
         command_name = "Scan"
@@ -352,6 +375,8 @@ class SDPSubarray(SDPDevice):
             subarray.obs_state_target = ObsState.SCANNING
             subarray.scan_id = scan_id
 
+        self._update_attr_until_obs_state([ObsState.SCANNING])
+
     def is_EndScan_allowed(self):
         """Check if the EndScan command is allowed."""
         command_name = "EndScan"
@@ -374,6 +399,8 @@ class SDPSubarray(SDPDevice):
             subarray.obs_state_target = ObsState.READY
             subarray.scan_id = None
 
+        self._update_attr_until_obs_state([ObsState.READY])
+
     def is_End_allowed(self):
         """Check if the End command is allowed."""
         command_name = "End"
@@ -395,6 +422,8 @@ class SDPSubarray(SDPDevice):
             subarray.transaction_id = transaction_id
             subarray.obs_state_target = ObsState.IDLE
             subarray.scan_type = None
+
+        self._update_attr_until_obs_state([ObsState.IDLE])
 
     def is_Abort_allowed(self):
         """Check if the Abort command is allowed."""
@@ -426,6 +455,8 @@ class SDPSubarray(SDPDevice):
             subarray.transaction_id = transaction_id
             subarray.obs_state_target = ObsState.ABORTED
 
+        self._update_attr_until_obs_state([ObsState.ABORTED])
+
     def is_ObsReset_allowed(self):
         """Check if the ObsReset command is allowed."""
         command_name = "ObsReset"
@@ -451,6 +482,8 @@ class SDPSubarray(SDPDevice):
             subarray.scan_type = None
             subarray.scan_id = None
 
+        self._update_attr_until_obs_state([ObsState.IDLE])
+
     def is_Restart_allowed(self):
         """Check if the Restart command is allowed."""
         command_name = "Restart"
@@ -475,6 +508,8 @@ class SDPSubarray(SDPDevice):
             subarray.obs_state_target = ObsState.EMPTY
             subarray.cancel_sbi()
 
+        self._update_attr_until_obs_state([ObsState.EMPTY])
+
     # ----------------------
     # Command allowed method
     # ----------------------
@@ -495,6 +530,8 @@ class SDPSubarray(SDPDevice):
 
     def _set_obs_state(self, value):
         """Set obsState and push a change event."""
+        old_value = None if self._obs_state is None else self._obs_state.name
+        LOG.debug("Called _set_obs_state %s -> %s", old_value, value.name)
         if self._obs_state != value:
             LOG.info("Setting obsState to %s", value.name)
             self._obs_state = value
@@ -555,23 +592,37 @@ class SDPSubarray(SDPDevice):
         """
         subarray = self._config.subarray(txn)
 
-        with log_transaction_id(subarray.transaction_id):
-            self._set_state(subarray.state)
-            self._set_receive_addresses(subarray.receive_addresses)
-            self._set_scan_type(subarray.scan_type if subarray.scan_type else "null")
-            self._set_scan_id(subarray.scan_id if subarray.scan_id else 0)
+        if subarray.state is None:
+            LOG.info("No state: attributes cannot be set")
+            return
 
-            if (
-                subarray.obs_state_target == ObsState.IDLE
-                and subarray.command == "AssignResources"
-            ):
+        with log_transaction_id(subarray.transaction_id):
+            # Compute obsState
+            if subarray.obs_state_target == ObsState.IDLE:
                 if subarray.receive_addresses is None:
                     obs_state = ObsState.RESOURCING
                 else:
                     obs_state = ObsState.IDLE
             else:
                 obs_state = subarray.obs_state_target
+
+            # Set attributes
+            self._set_state(subarray.state)
             self._set_obs_state(obs_state)
+            self._set_receive_addresses(subarray.receive_addresses)
+            self._set_scan_type(subarray.scan_type if subarray.scan_type else "null")
+            self._set_scan_id(subarray.scan_id if subarray.scan_id else 0)
+
+    def _update_attr_until_obs_state(self, values):
+        """
+        Update attributes until obsState reaches one of the values.
+
+        This is used as a substitute event loop inside a command.
+
+        :param values: list of obsState values
+
+        """
+        self._update_attr_until_condition(lambda: self._obs_state in values)
 
     # ---------------
     # Utility methods

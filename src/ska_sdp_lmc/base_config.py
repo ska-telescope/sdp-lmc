@@ -1,12 +1,11 @@
 """Base configuration interface."""
 
-import logging
-
 import ska_sdp_config
 from .feature_toggle import FeatureToggle
+from .tango_logging import get_logger
 
 FEATURE_CONFIG_DB = FeatureToggle("config_db", True)
-LOG = logging.getLogger("ska_sdp_lmc")
+LOG = get_logger()
 
 
 def new_config_db_client():
@@ -42,3 +41,7 @@ class BaseConfig:
 
         """
         return self._client.watcher()
+
+    def close(self):
+        """Close connection to configuration."""
+        self._client.close()

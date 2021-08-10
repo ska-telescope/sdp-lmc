@@ -1,7 +1,4 @@
-#!/usr/bin/env python
-# -*- coding: utf-8 -*-
 """PIP setup script for the SKA SDP LMC package."""
-# pylint: disable=exec-used
 
 import os
 import setuptools

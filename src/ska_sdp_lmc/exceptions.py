@@ -1,10 +1,10 @@
 """Tango exceptions."""
 
-import logging
-
 from tango import Except, ErrSeverity
 
-LOG = logging.getLogger("ska_sdp_lmc")
+from .tango_logging import get_logger
+
+LOG = get_logger()
 
 
 def raise_exception(reason, desc, origin, severity=ErrSeverity.ERR):
@@ -13,6 +13,7 @@ def raise_exception(reason, desc, origin, severity=ErrSeverity.ERR):
     :param reason: Reason for the error.
     :param desc: Error description.
     :param origin: Error origin.
+    :param severity: Error severity.
 
     """
     LOG.error("Raising DevFailed exception...")

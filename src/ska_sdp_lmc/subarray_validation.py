@@ -1,7 +1,6 @@
 """Subarray command validation and parsing."""
 
 import json
-import logging
 
 import ska_sdp_config
 
@@ -13,8 +12,9 @@ from ska_telmodel.sdp.version import (
     check_sdp_interface_version,
 )
 from .exceptions import raise_command_failed
+from .tango_logging import get_logger
 
-LOG = logging.getLogger("ska_sdp_lmc")
+LOG = get_logger()
 
 MSG_VALIDATION_FAILED = "Configuration validation failed"
 

@@ -1,9 +1,4 @@
-# coding: utf-8
 """Test for master and subarray config."""
-# pylint: disable=protected-access
-# pylint: disable=invalid-name
-# pylint: disable=too-many-branches
-# pylint: disable=too-many-statements
 
 from tango import DevState
 from ska_sdp_config import ProcessingBlock

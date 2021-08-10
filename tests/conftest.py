@@ -1,10 +1,8 @@
 """Pytest fixtures."""
 
-# pylint: disable=redefined-outer-name
+from tango.test_context import MultiDeviceTestContext
 
 import pytest
-
-from tango.test_context import MultiDeviceTestContext
 
 from ska_sdp_lmc import SDPMaster, SDPSubarray, base, base_config
 

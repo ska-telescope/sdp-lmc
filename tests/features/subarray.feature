@@ -11,8 +11,8 @@ Feature: SDP Subarray Device
 	Scenario: Device is initialised in the correct state
 		Given I have an SDPSubarray device
 		When the device is initialised
-		Then the state should be OFF
-		And obsState should be EMPTY
+		Then the state should become OFF
+		And obsState should become EMPTY
 		And adminMode should be ONLINE
 		And healthState should be OK
 		And the log should not contain a transaction ID
@@ -22,7 +22,6 @@ Feature: SDP Subarray Device
 	@XTP-969 @XTP-118 @Current
 	Scenario Outline: Command is present and has correct input and output types
 		Given I have an SDPSubarray device
-		When the device is initialised
 		Then the input type of <command> should be <input_type>
 		And the output type of <command> should be <output_type>
 
@@ -45,8 +44,9 @@ Feature: SDP Subarray Device
 	@XTP-949 @XTP-118 @Current
 	Scenario Outline: Command is rejected when the state is OFF
 		Given I have an SDPSubarray device
-		When the state is OFF
-		Then calling <command> should raise tango.DevFailed
+		And the state is OFF
+		When I call <command>
+		Then the device should raise tango.DevFailed
 
 		Examples:
 		| command          |
@@ -66,8 +66,8 @@ Feature: SDP Subarray Device
 	@XTP-917 @XTP-118 @Current
 	Scenario: On command succeeds
 		Given I have an SDPSubarray device
-		When the state is OFF
-		And I call On
+		And the state is OFF
+		When I call On
 		Then the state should be ON
 		And obsState should be EMPTY
 		And the log should contain a transaction ID
@@ -77,8 +77,8 @@ Feature: SDP Subarray Device
 	@XTP-918 @XTP-118 @Current
 	Scenario Outline: Off command succeeds
 		Given I have an SDPSubarray device
-		When obsState is <initial_obs_state>
-		And I call Off
+		And obsState is <initial_obs_state>
+		When I call Off
 		Then the state should be OFF
 		And obsState should be EMPTY
 		And the log should contain a transaction ID
@@ -98,18 +98,18 @@ Feature: SDP Subarray Device
 		| RESTARTING        |
 
 
-	#Commands succeed in obsStates where they are allowed and transition to the correct final obsState.
+	#Commands succeed in obsStates where they are allowed and transition to the correct final obsState.
 	@XTP-971 @XTP-118 @Current
 	Scenario Outline: Command succeeds in allowed obsState
 		Given I have an SDPSubarray device
-		When obsState is <initial_obs_state>
-		And I call <command>
+		And obsState is <initial_obs_state>
+		When I call <command>
 		Then obsState should be <final_obs_state>
 		And the log should contain a transaction ID
 
 		Examples:
 		| command          | initial_obs_state | final_obs_state |
-		| AssignResources  | EMPTY             | IDLE            |
+		| AssignResources  | EMPTY             | RESOURCING      |
 		| ReleaseResources | IDLE              | EMPTY           |
 		| Configure        | IDLE              | READY           |
 		| Configure        | READY             | READY           |
@@ -127,12 +127,22 @@ Feature: SDP Subarray Device
 		| Restart          | FAULT             | EMPTY           |
 
 
-	#Commands are rejected when called in obsStates where they are not allowed.
+	#Assign resources transition from intermediate state.
+	Scenario: Receive addresses cause transition to IDLE
+		Given I have an SDPSubarray device
+		And obsState is RESOURCING
+		When the receive processing block writes the receive addresses into its state
+		Then obsState should become IDLE
+		And receiveAddresses should have the expected value
+
+
+	#Commands are rejected when called in obsStates where they are not allowed.
 	@XTP-972 @XTP-118 @Current
 	Scenario Outline: Command is rejected in disallowed obsState
 		Given I have an SDPSubarray device
-		When obsState is <initial_obs_state>
-		Then calling <command> should raise tango.DevFailed
+		And obsState is <initial_obs_state>
+		When I call <command>
+		Then the device should raise tango.DevFailed
 
 		Examples:
 		| command          | initial_obs_state |
@@ -225,8 +235,9 @@ Feature: SDP Subarray Device
 	@XTP-965 @XTP-118 @Current
 	Scenario Outline: Command is rejected with an invalid JSON configuration
 		Given I have an SDPSubarray device
-		When obsState is <initial_obs_state>
-		Then calling <command> with an invalid JSON configuration should raise tango.DevFailed
+		And obsState is <initial_obs_state>
+		When I call <command> with an invalid JSON configuration
+		Then the device should raise tango.DevFailed
 
 		Examples:
 		| command         | initial_obs_state |
@@ -240,13 +251,13 @@ Feature: SDP Subarray Device
 	#Commands accept version 0.2 of JSON strings
 	Scenario Outline: Command is accepted with previous schema version
 		Given I have an SDPSubarray device
-		When obsState is <initial_obs_state>
-		And I call <command> with previous JSON configuration
+		And obsState is <initial_obs_state>
+		When I call <command> with previous JSON configuration
 		Then obsState should be <final_obs_state>
 
 		Examples:
 		| command          | initial_obs_state | final_obs_state |
-		| AssignResources  | EMPTY             | IDLE            |
+		| AssignResources  | EMPTY             | RESOURCING      |
 		| Configure        | IDLE              | READY           |
 		| Scan             | READY             | SCANNING        |
 
@@ -255,31 +266,20 @@ Feature: SDP Subarray Device
 	#Commands accept version 0.2 of JSON strings without interface value
 	Scenario Outline: Command is accepted with previous schema version without interface value
 		Given I have an SDPSubarray device
-		When obsState is <initial_obs_state>
-		And I call <command> without an interface value in the JSON configuration
+		And obsState is <initial_obs_state>
+		When I call <command> without an interface value in the JSON configuration
 		Then obsState should be <final_obs_state>
 
 		Examples:
 		| command         | initial_obs_state | final_obs_state |
-		| AssignResources | EMPTY             | IDLE            |
+		| AssignResources | EMPTY             | RESOURCING      |
 		| Configure       | IDLE              | READY           |
 		| Scan            | READY             | SCANNING        |
-
-
-
-	@XTP-120 @XTP-118 @Current
-	Scenario: AssignResources command configures processing blocks and sets receive addresses
-		Given I have an SDPSubarray device
-		When obsState is EMPTY
-		And I call AssignResources
-		Then the processing blocks should be in the config DB
-		And receiveAddresses should have the expected value
-
 
 
 	@XTP-122 @XTP-118 @Current
 	Scenario: ReleaseResources command clears receive addresses
 		Given I have an SDPSubarray device
-		When obsState is IDLE
-		And I call ReleaseResources
+		And obsState is IDLE
+		When I call ReleaseResources
 		Then receiveAddresses should be an empty JSON object

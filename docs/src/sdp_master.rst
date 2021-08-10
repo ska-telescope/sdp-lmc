@@ -4,19 +4,16 @@ SDP Master Device
 Introduction
 ------------
 
-The SDP Master Tango device is designed to provide the overall control of the
+The SDP master Tango device is designed to provide the overall control of the
 SDP. The commands it receives cause the other SDP services to be stopped or
 started, and its attributes report on the overall state of the system.
 
-The present implementation of the SDP Master device does very little apart from
+The present implementation of the SDP master device does very little apart from
 performing the state transitions in response to commands.
 
 
-Interface
----------
-
 Attributes
-^^^^^^^^^^
+----------
 
 Device attributes:
 
@@ -31,7 +28,7 @@ heathState     Enum   Read       :ref:`master_healthstate`    SDP health state
 .. _master_healthstate:
 
 healthState values
-""""""""""""""""""
+^^^^^^^^^^^^^^^^^^
 
 ============ ===========
 healthState  Description
@@ -47,7 +44,7 @@ UNKNOWN (3)
 
 
 Commands
-^^^^^^^^
+--------
 
 The commands change the device state as described below, but at present they
 have no other effect on SDP.
@@ -63,11 +60,3 @@ Standby None          None        Set device state to STANDBY
 ------- ------------- ----------- ------
 Off     None          None        Set device state to OFF
 ======= ============= =========== ======
-
-Python API
-----------
-
-.. autoclass:: ska_sdp_lmc.SDPMaster
-   :members:
-   :undoc-members:
-

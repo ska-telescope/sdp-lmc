@@ -1,6 +1,3 @@
-# coding: utf-8
-"""Test logging."""
-
 import logging
 import sys
 
@@ -19,20 +16,39 @@ class ListHandler(logging.Handler):
         super().__init__()
         self.list = []
 
+    def clear(self) -> None:
+        self.list.clear()
+
     def emit(self, record: logging.LogRecord) -> None:
-        """Emit."""
-        self.list.append(self.format(record))
+        msg = self.format(record)
+        self.list.append(msg)
+
+    def get_line(self, pos: int):
+        return self.list[pos] if self.list else "||||||"
+
+    def get_tag_from(self, pos: int) -> str:
+        return self.get_tag_from_line(self.get_line(pos))
+
+    @staticmethod
+    def get_tag_from_line(line: str) -> str:
+        return line.split("|")[6]
 
     def get_last(self) -> str:
-        """Get last."""
-        return self.list[-1]
+        return self.get_line(-1)
 
     def get_last_tag(self) -> str:
-        """Get the last tag."""
-        return self.get_last().split("|")[6]
+        return self.get_tag_from(-1)
+
+    def text_in_tag(self, text: str, last: int = 1) -> bool:
+        sub_list = self.list[-last:]
+        is_text_in = False
+        for item in sub_list:
+            if text in self.get_tag_from_line(item):
+                is_text_in = True
+                break
+        return is_text_in
 
     def __iter__(self) -> Iterable[str]:
-        """Iterable interface."""
         return self.list.__iter__()
 
 
@@ -40,19 +56,16 @@ class FakeDevice:
     """Class for Fake Device."""
 
     def info_stream(self, _: str, *args) -> None:
-        """Info Stream."""
         print("info stream should not be called")
 
     def get_name(self) -> str:
         return "fake"
 
     def get_logger(self) -> logging.Logger:
-        """Get logger."""
         return tl.get_logger()
 
 
 def test_stuff():
-    """Testing stuff."""
     dev = FakeDevice()
 
     sys.argv = ["test"]

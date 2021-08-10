@@ -16,8 +16,34 @@ image: artefact.skao.int/ska-tango-images-pytango-builder:9.3.10
 # Test and lint Python package and build documentation
 # ============================================================================
 
-test:
+# Synchronous test using configuration memory backend
+
+test-synchronous:
   stage: test
+  before_script:
+    - pip3 install -r requirements.txt -r requirements-test.txt
+  script:
+    - pip3 list
+    - python3 setup.py test
+
+# Test with event loop using configuration etcd backend
+
+test-event-loop:
+  stage: test
+  services:
+    - name: quay.io/coreos/etcd:v3.3.25
+      alias: etcd
+      command:
+        - /usr/local/bin/etcd
+        - "--advertise-client-urls=http://0.0.0.0:2379"
+        - "--listen-client-urls=http://0.0.0.0:2379"
+        - "--initial-advertise-peer-urls=http://0.0.0.0:2380"
+        - "--listen-peer-urls=http://0.0.0.0:2380"
+        - "--initial-cluster=default=http://0.0.0.0:2380"
+  variables:
+    SDP_CONFIG_HOST: etcd
+    FEATURE_CONFIG_DB: 1
+    FEATURE_EVENT_LOOP: 1
   before_script:
     - pip3 install -r requirements.txt -r requirements-test.txt
   script:

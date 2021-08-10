@@ -1,5 +1,4 @@
 #!/usr/bin/env python3
-# -*- coding: utf-8 -*-
 #
 # developer.skatelescope.org documentation build configuration file, created by
 # sphinx-quickstart on Wed Dec 13 11:59:38 2017.
@@ -16,7 +15,6 @@
 # If extensions (or modules to document with autodoc) are in another directory,
 # add these directories to sys.path here. If the directory is relative to the
 # documentation root, use os.path.abspath to make it absolute, like shown here.
-#
 
 autodoc_mock_imports = [
     "ska_sdp_config",

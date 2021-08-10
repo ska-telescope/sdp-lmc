@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """Tango SDPSubarray device module."""
 
 import signal

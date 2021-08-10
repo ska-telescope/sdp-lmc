@@ -172,7 +172,7 @@ def log_contains_transaction_id():
 
 def wipe_config_db():
     """Remove the master entry in the config DB."""
-    CONFIG_DB_CLIENT._backend.delete("/master", recursive=True, must_exist=False)
+    CONFIG_DB_CLIENT.backend.delete("/master", recursive=True, must_exist=False)
 
 
 def set_state(state):

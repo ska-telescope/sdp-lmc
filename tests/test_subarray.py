@@ -432,7 +432,7 @@ def receive_addresses_empty(subarray_device):
 @then("the log should not contain a transaction ID")
 def log_contains_no_transaction_id():
     """Check that the log does not contain a transaction ID."""
-    assert not LOG_LIST.text_in_tag("txn-", last=5)
+    assert not LOG_LIST.text_in_tag("txn-", last=10)
 
 
 @then("the log should contain a transaction ID")
@@ -472,9 +472,9 @@ def wait_for_obs_state(device, obs_state):
 
 def wipe_config_db():
     """Remove the subarray, SBI and PB entries in the config DB."""
-    CONFIG_DB_CLIENT._backend.delete("/subarray", recursive=True, must_exist=False)
-    CONFIG_DB_CLIENT._backend.delete("/sb", recursive=True, must_exist=False)
-    CONFIG_DB_CLIENT._backend.delete("/pb", recursive=True, must_exist=False)
+    CONFIG_DB_CLIENT.backend.delete("/subarray", recursive=True, must_exist=False)
+    CONFIG_DB_CLIENT.backend.delete("/sb", recursive=True, must_exist=False)
+    CONFIG_DB_CLIENT.backend.delete("/pb", recursive=True, must_exist=False)
 
 
 def set_state_and_obs_state(state, obs_state):

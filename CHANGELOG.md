@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.18.0
+
+* Modify behaviour of commands so attributes take their transitional or final
+  value before a command returns.
+
 ## 0.17.2
 
 * Publish Docker image in central artefact repository.
